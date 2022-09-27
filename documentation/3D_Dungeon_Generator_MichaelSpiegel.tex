@@ -1,0 +1,62 @@
+\documentclass[a4paper,12pt,oneside]{scrreprt}
+%% Pakete:
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}    
+\usepackage{graphicx}       
+\usepackage[british,UKenglish]{babel} 
+\usepackage{csquotes} 
+\usepackage{eurosym}
+\usepackage[linktocpage=true]{hyperref} 
+\usepackage[bindingoffset=8mm]{geometry}
+\usepackage{caption}
+\usepackage[onehalfspacing]{setspace}
+\usepackage{minted}
+\usepackage[a-2b,mathxmp]{pdfx}[2018/12/22]
+\usepackage[style=authoryear,citestyle=authoryear,backend=biber]{biblatex}
+\addbibresource{Zotero.bib}
+
+%% Einstellungen:
+\setcounter{secnumdepth}{4}
+\setcounter{tocdepth}{4}   % Tiefe der Gliederung im Inhaltsverzeichnis
+\captionsetup{format=hang, justification=raggedright}
+
+\begin{document}
+\thispagestyle{empty}
+\begin{titlepage}
+  \begin{flushright}
+  \includegraphics[width=0.3\linewidth]{images/Hogeschool_van_amsterdam_logo.svg}
+  \end{flushright}
+  \begin{flushleft}
+  \section*{R\&D Assignment}
+  \subsection*{3D Dungeon Generator}
+
+  \vspace{1cm}
+  Hogeschool van Amsterdam\newline
+  Gameplay Engineering
+
+  \vspace{0.5cm}
+
+  Michael Spiegel\newline
+  27.09.2022
+  \end{flushleft}
+\end{titlepage}
+
+% Table of Contents:
+\tableofcontents
+
+% Content:
+\chapter{Introduction}
+
+% List of Figures:
+\clearpage
+\phantomsection
+\addcontentsline{toc}{chapter}{List of Figures}
+\listoffigures
+
+% Bibliography:
+\clearpage
+\phantomsection
+\addcontentsline{toc}{chapter}{Bibliography}
+\printbibliography
+
+\end{document}
