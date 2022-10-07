@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System.Diagnostics;
+using System.Linq;
 
 public class DungeonCreator : MonoBehaviour
 {
@@ -8,7 +9,10 @@ public class DungeonCreator : MonoBehaviour
     public int roomWidthMin, roomLengthMin;
     public int maxIterations;
     public int corridorWidth;
-    public Material material;
+    public Material floorMaterial;
+    public Material startRoomMaterial;
+    public int dungeonLayerIndex = 6; // Dungeon layer for the camera
+    
     [Range(0.0f, 0.3f)]
     public float roomBottomCornerModifier;
     [Range(0.7f, 1.0f)]
@@ -16,6 +20,7 @@ public class DungeonCreator : MonoBehaviour
     [Range(0.0f, 2.0f)]
     public int roomOffset;
     public GameObject wallVertical, wallHorizontal;
+    public GameObject playerPrefab;
     
     private List<Vector3Int> _possibleDoorVerticalPositions;
     private List<Vector3Int> _possibleDoorHorizontalPositions;
@@ -53,16 +58,32 @@ public class DungeonCreator : MonoBehaviour
         _possibleDoorHorizontalPositions = new List<Vector3Int>(); 
         _possibleWallHorizontalPositions = new List<Vector3Int>();
         _possibleWallVerticalPositions = new List<Vector3Int>();
-
-        foreach (var room in listOfRooms)
+        
+        foreach (var (room, index) in listOfRooms.Select((room, index) => ( room, index )))
         {
-            CreateMesh(room.BottomLeftAreaCorner, room.TopRightAreaCorner);
+            // Choose first generated room as start room
+            if (index == 0)
+            {
+                CreateMesh(room.BottomLeftAreaCorner, room.TopRightAreaCorner, startRoomMaterial);    
+            }
+            else
+            {
+                CreateMesh(room.BottomLeftAreaCorner, room.TopRightAreaCorner, floorMaterial);
+            }
         }
 
         GameObject wallParent = new GameObject("WallParent");
         wallParent.transform.parent = transform;
+        wallParent.layer = dungeonLayerIndex;
         
         CreateWalls(wallParent);
+
+        SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
+    }
+
+    private void SpawnPlayer(GameObject player, RoomNode startRoom)
+    {
+        player.transform.position = startRoom.CentrePoint;
     }
 
     private void CreateWalls(GameObject wallParent)
@@ -80,10 +101,11 @@ public class DungeonCreator : MonoBehaviour
 
     private void CreateWall(GameObject wallParent, Vector3Int wallPosition, GameObject wallPrefab)
     {
-        Instantiate(wallPrefab, wallPosition, Quaternion.identity, wallParent.transform);
+        GameObject wall = Instantiate(wallPrefab, wallPosition, Quaternion.identity, wallParent.transform);
+        wall.layer = dungeonLayerIndex;
     }
 
-    private void CreateMesh(Vector2 bottomLeftCorner, Vector2 topRightCorner)
+    private void CreateMesh(Vector2 bottomLeftCorner, Vector2 topRightCorner, Material material)
     {
         Vector3 bottomLeftV = new Vector3(bottomLeftCorner.x, 0, bottomLeftCorner.y);
         Vector3 bottomRightV = new Vector3(topRightCorner.x, 0, bottomLeftCorner.y);
@@ -120,7 +142,7 @@ public class DungeonCreator : MonoBehaviour
             triangles = triangles
         };
 
-        GameObject dungeonFloor = new GameObject("Mesh", typeof(MeshFilter), typeof(MeshRenderer))
+        GameObject dungeonFloor = new GameObject("Dungeon Mesh", typeof(MeshFilter), typeof(MeshRenderer))
         {
             transform =
             {
@@ -131,6 +153,7 @@ public class DungeonCreator : MonoBehaviour
         
         dungeonFloor.GetComponent<MeshFilter>().mesh = mesh;
         dungeonFloor.GetComponent<MeshRenderer>().material = material;
+        dungeonFloor.layer = dungeonLayerIndex;
 
         for (int row = (int) bottomLeftV.x; row < (int) bottomRightV.x; row++)
         {

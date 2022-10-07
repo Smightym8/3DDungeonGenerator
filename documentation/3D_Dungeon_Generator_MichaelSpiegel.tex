@@ -47,12 +47,14 @@
 
 % Content:
 \chapter{Introduction}
-For my research project I chose a 3D dungeon generator that should generate a new dungeon every time the game is started. Furthermore, I decided to make it possible to walk through the dungeon. For this I want to add a player that will be placed in a randomly chosen start room. To make the whole dungeon more interesting and not leave it as an empty place, I plan to add some scenery like torches. Additionally the dungeon should also contain enemies for which I try to implement a combat system. The focus lies on a performant generation of the dungeon and on the look. Through this project I want to understand how the algorithms work that are used for dungeon generation. Furthermore, I want to get knowledge about combat systems in games.
+For my research project I chose a 3D dungeon generator that should generate a new dungeon every time the game is started. Furthermore, I decided to make it possible to walk through the dungeon. For this I want to add a player that will be placed in a randomly chosen start room. To make the whole dungeon more interesting and not leave it as an empty place, I plan to add some scenery like torches. Additionally the dungeon should also contain enemies for which I try to implement a combat system. The focus lies on a performant generation of the dungeon and on the look. As a combat system can take much time to implement and needs a lot of testing it could be possible throughout the project that I will put more effort in the dungeon itself. For this I would then only implement a player to walk through the dungeon. Through this project I want to understand how the algorithms work that are used for dungeon generation. Furthermore, I want to get knowledge about combat systems in games.
 
-\chapter{Existing algorithms for dungeon generation}
+\chapter{Research}
+
+\section{Existing algorithms for dungeon generation}
 There exist several algorithms which can be used to create dungeons. In this chapter three algorithms will be described and in the end compared. 
 
-\section{Binary Space Partitioning}
+\subsection{Binary Space Partitioning}
 The binary space partitioning algorithm is very popular for creating dungeons because it is a fast algorithm and not that hard to implement. With this algorithm the dungeon is represented through a binary tree structure. The initial space will be split in each iteration of the algorithm. With this algorithm it is possible to create a variety of dungeons each time the code is run. For this it is necessary that specific parts of the split have to be randomised. The split can be horizontal or vertical. Figure \ref{fig:bsp_example} shows how a dungeon generated with Binary Space Partitioning looks like. (\cite[][]{williams_investigation_nodate})
 
 \begin{figure}[htb]
@@ -64,7 +66,7 @@ Source: \cite[][]{williams_investigation_nodate}
 \end{figure}
 
 \newpage
-\section{Cellular Automata}
+\subsection{Cellular Automata}
 The Cellular automata algorithm uses a grid of cells to build a dungeon. Each cell has a reference to its neighbour cells and a defined state for the time $t = 0$. With the help of predefined rules the state for $t = t + 1$ can be calculated. Depending on the defined rules and the cell states there will be patterns that occur from time to time. A cell it self represents a space where the player can walk but also a space where the player can not walk for example rocks. As you can see in figure \ref{fig:cellular_automata_example} Cellular Automata creates more cave like dungeons without real rooms. (\cite[][]{williams_investigation_nodate})
 
 \begin{figure}[htb]
@@ -76,7 +78,7 @@ Source: \cite[][]{williams_investigation_nodate}
 \end{figure}
 
 \newpage
-\section{Delaunay Triangulation}
+\subsection{Delaunay Triangulation}
 The last algorithm is the delaunay triangulation algorithm for dungeon generation. This algorithm also uses cells but in this case a random rectangle is created inside of each cell. After this step the algorithm separates the room and prevents them from overlapping. All cells that are exceeding a threshold become rooms. To connect all rooms a graph for all the room centre points is constructed. Additionally to the delaunay triangulation algorithm it is necessary to generate a minimum spanning tree of the originally create graph to remove cycles. In figure \ref{fig:delaunay_example} you can see how a dungeon generated with the delaunay triangulation looks like. Compared to the other two algorithms it is more similar to the result of the binary space partition generated dungeon because both use rooms. (\cite[][]{williams_investigation_nodate})
 
 \begin{figure}[htb]
@@ -108,6 +110,22 @@ Figure \ref{fig:delaunay_performance} show that compared to the other algorithm 
 Source: \cite[][]{williams_investigation_nodate}
 \label{fig:delaunay_performance}
 \end{figure}
+
+\chapter{Implementation}
+\section{Dungeon Generator}
+\subsection{Creating rooms}
+\subsection{Adding corridors}
+\subsection{Adding walls}
+\subsection{Determining Start and end room}
+\subsection{Adding Scenery}
+
+\section{Combat system}
+\subsection{Player Movement}
+\subsection{Enemy Movement}
+
+\chapter{Conclusion and Reflection}
+
+
 
 % List of Figures:
 \clearpage

@@ -3,17 +3,6 @@ using UnityEngine;
 
 public class RoomGenerator
 {
-    private int _maxIterations;
-    private int _roomWidthMin;
-    private int _roomLengthMin;
-
-    public RoomGenerator(int maxIterations, int roomWidthMin, int roomLengthMin)
-    {
-        _maxIterations = maxIterations;
-        _roomWidthMin = roomWidthMin;
-        _roomLengthMin = roomLengthMin;
-    }
-
     public List<RoomNode> GenerateRoomsInGivenSpace(List<Node> roomSpaces, float roomBottomCornerModifier, 
         float roomTopCornerModifier, int roomOffset)
     {

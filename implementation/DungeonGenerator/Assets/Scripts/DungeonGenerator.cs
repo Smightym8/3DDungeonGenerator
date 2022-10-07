@@ -21,7 +21,7 @@ public class DungeonGenerator
         _allNodes = bsp.PrepareNodesCollection(maxIterations, roomWidthMin, roomLengthMin);
 
         List<Node> roomSpaces = StructureHelper.TraverseGraphToExtractLowestLeaves(bsp.RootNode);
-        RoomGenerator roomGenerator = new RoomGenerator(maxIterations, roomWidthMin, roomLengthMin);
+        RoomGenerator roomGenerator = new RoomGenerator();
         List<RoomNode> roomList = roomGenerator.GenerateRoomsInGivenSpace(
             roomSpaces, 
             roomBottomCornerModifier, 
