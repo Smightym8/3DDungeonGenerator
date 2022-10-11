@@ -2,12 +2,14 @@ using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
-    public CharacterController controller;
-    public Transform camera;
+    public GameObject player;
+    public Transform thirdPersonCamera;
     public Animator animator;
-    public float speed = 3f;
+    public int walkingSpeed = 3;
+    public int runningSpeed = 6;
     public float smoothTime = 0.1f;
 
+    private int _currentSpeed;
     private bool _isMoving;
     private bool _isRunning;
     private Vector3 _moveDirection;
@@ -15,6 +17,13 @@ public class PlayerMovement : MonoBehaviour
     
     private static readonly int IsWalking = Animator.StringToHash("isWalking");
     private static readonly int IsRunning = Animator.StringToHash("isRunning");
+    private Rigidbody _rigidbody;
+
+    private void Awake()
+    {
+        _rigidbody = player.GetComponent<Rigidbody>();
+        _currentSpeed = walkingSpeed;
+    }
 
     private void Update()
     {
@@ -33,7 +42,7 @@ public class PlayerMovement : MonoBehaviour
             _isMoving = false;
             animator.SetBool(IsWalking, false);
         }
-
+        
         if (Input.GetKeyDown(KeyCode.LeftShift))
         {
             _isRunning = true;
@@ -51,7 +60,7 @@ public class PlayerMovement : MonoBehaviour
     {
         if (_isMoving)
         {
-            var targetAngle = Mathf.Atan2(_moveDirection.x, _moveDirection.z) * Mathf.Rad2Deg + camera.eulerAngles.y;
+            var targetAngle = Mathf.Atan2(_moveDirection.x, _moveDirection.z) * Mathf.Rad2Deg + thirdPersonCamera.eulerAngles.y;
             var angle = Mathf.SmoothDampAngle(
                 transform.eulerAngles.y, 
                 targetAngle, 
@@ -62,17 +71,19 @@ public class PlayerMovement : MonoBehaviour
             transform.rotation = Quaternion.Euler(0f, angle, 0f);
 
             var moveDirection = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
-            controller.Move(moveDirection.normalized * (speed * Time.deltaTime));
+            Vector3 currentPos = _rigidbody.position;
+            _rigidbody.MovePosition(currentPos + moveDirection.normalized * (_currentSpeed * Time.deltaTime)); 
+            //player.Move(moveDirection.normalized * (_currentSpeed * Time.deltaTime));
         }
 
         if (_isMoving && _isRunning)
         {
-            speed *= 2;
+            _currentSpeed = runningSpeed;
         }
 
         if (!_isRunning)
         {
-            speed /= 2;
+            _currentSpeed = walkingSpeed;
         }
     }
 }

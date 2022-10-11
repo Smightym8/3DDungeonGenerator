@@ -1,8 +1,8 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Diagnostics;
 using System.Linq;
+using Debug = UnityEngine.Debug;
 
 public class DungeonCreator : MonoBehaviour
 {
@@ -11,7 +11,9 @@ public class DungeonCreator : MonoBehaviour
     public int maxIterations;
     public int corridorWidth;
     public Material floorMaterial;
+    public Material roofMaterial;
     public Material startRoomMaterial;
+    public Material endRoomMaterial;
     public int dungeonLayerIndex = 6; // Dungeon layer for the camera
     
     [Range(0.0f, 0.3f)]
@@ -28,8 +30,9 @@ public class DungeonCreator : MonoBehaviour
     private List<Vector3Int> _possibleWallHorizontalPositions;
     private List<Vector3Int> _possibleWallVerticalPositions;
 
+    private List<GameObject> _dungeonFloors = new List<GameObject>(); 
+    
     // Unity Methods
-    // Start is called before the first frame update
     void Start()
     {
         Stopwatch sw = new Stopwatch();
@@ -38,7 +41,7 @@ public class DungeonCreator : MonoBehaviour
         CreateDungeon();
         sw.Stop();
         
-        UnityEngine.Debug.Log($"Dungeon creation time: {sw.Elapsed}");
+        Debug.Log($"Dungeon creation time: {sw.Elapsed}");
     }
 
     // Custom Methods
@@ -59,18 +62,56 @@ public class DungeonCreator : MonoBehaviour
         _possibleDoorHorizontalPositions = new List<Vector3Int>(); 
         _possibleWallHorizontalPositions = new List<Vector3Int>();
         _possibleWallVerticalPositions = new List<Vector3Int>();
+
+        RoomNode startRoom = (RoomNode) listOfRooms[0];
+        GameObject endRoom = null;
+        float maxDistance = 0f;
         
         foreach (var (room, index) in listOfRooms.Select((room, index) => ( room, index )))
         {
+            // Create floor
             // Choose first generated room as start room
             if (index == 0)
             {
-                CreateMesh(room.BottomLeftAreaCorner, room.TopRightAreaCorner, startRoomMaterial);    
+                _dungeonFloors.Add(
+                    CreateMesh(
+                        room.BottomLeftAreaCorner,
+                        room.TopRightAreaCorner,
+                        startRoomMaterial,
+                        0,
+                        true
+                    )
+                );
             }
             else
             {
-                CreateMesh(room.BottomLeftAreaCorner, room.TopRightAreaCorner, floorMaterial);
+                _dungeonFloors.Add(
+                    CreateMesh(
+                        room.BottomLeftAreaCorner,
+                        room.TopRightAreaCorner,
+                        floorMaterial,
+                        0,
+                        true
+                    )
+                );
             }
+    
+            // Check distance between start room and each other room
+            if (index < listOfRooms.Count / 2 && index > 0)
+            {
+                RoomNode currentRoom = (RoomNode)listOfRooms[index];
+                float dist = Vector3.Distance(startRoom.CentrePoint, currentRoom.CentrePoint);
+
+                if (!(maxDistance < dist)) continue;
+        
+                maxDistance = dist;
+                endRoom = _dungeonFloors[index];
+            }
+        }
+
+        if (endRoom != null)
+        {
+            endRoom.GetComponent<MeshRenderer>().material = endRoomMaterial;    
         }
 
         GameObject wallParent = new GameObject("WallParent");
@@ -79,12 +120,27 @@ public class DungeonCreator : MonoBehaviour
         
         CreateWalls(wallParent);
 
+        foreach (var room in listOfRooms)
+        {
+            _dungeonFloors.Add(
+                CreateMesh(
+                    room.BottomLeftAreaCorner,
+                    room.TopRightAreaCorner,
+                    roofMaterial,
+                    6,
+                    false
+                )
+            );
+        }
+        
         SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
     }
 
     private void SpawnPlayer(GameObject player, RoomNode startRoom)
     {
-        player.transform.position = startRoom.CentrePoint;
+        var transformPosition = startRoom.CentrePoint;
+        transformPosition.y = 0.02f;
+        player.transform.position = transformPosition;
     }
 
     private void CreateWalls(GameObject wallParent)
@@ -106,12 +162,12 @@ public class DungeonCreator : MonoBehaviour
         wall.layer = dungeonLayerIndex;
     }
 
-    private void CreateMesh(Vector2 bottomLeftCorner, Vector2 topRightCorner, Material material)
+    private GameObject CreateMesh(Vector2 bottomLeftCorner, Vector2 topRightCorner, Material material, int height, bool isFloor)
     {
-        Vector3 bottomLeftV = new Vector3(bottomLeftCorner.x, 0, bottomLeftCorner.y);
-        Vector3 bottomRightV = new Vector3(topRightCorner.x, 0, bottomLeftCorner.y);
-        Vector3 topLeftV = new Vector3(bottomLeftCorner.x, 0, topRightCorner.y);
-        Vector3 topRightV = new Vector3(topRightCorner.x, 0, topRightCorner.y);
+        Vector3 bottomLeftV = new Vector3(bottomLeftCorner.x, height, bottomLeftCorner.y);
+        Vector3 bottomRightV = new Vector3(topRightCorner.x, height, bottomLeftCorner.y);
+        Vector3 topLeftV = new Vector3(bottomLeftCorner.x, height, topRightCorner.y);
+        Vector3 topRightV = new Vector3(topRightCorner.x, height, topRightCorner.y);
 
         Vector3[] vertices = {
             topLeftV,
@@ -127,15 +183,26 @@ public class DungeonCreator : MonoBehaviour
             uvs[i] = new Vector2(vertices[i].x, vertices[i].z);
         }
 
-        int[] triangles = {
-            0,
-            1,
-            2,
-            2,
-            1,
-            3
-        };
-
+        int[] triangles = new int[6];
+        if (isFloor)
+        {
+            triangles[0] = 0;
+            triangles[1] = 1;
+            triangles[2] = 2;
+            triangles[3] = 2;
+            triangles[4] = 1;
+            triangles[5] = 3;
+        }
+        else
+        {
+            triangles[0] = 2;
+            triangles[1] = 1;
+            triangles[2] = 0;
+            triangles[3] = 3;
+            triangles[4] = 1;
+            triangles[5] = 2;
+        }
+        
         Mesh mesh = new Mesh
         {
             vertices = vertices,
@@ -143,7 +210,7 @@ public class DungeonCreator : MonoBehaviour
             triangles = triangles
         };
 
-        GameObject dungeonFloor = new GameObject("Dungeon Mesh", typeof(MeshFilter), typeof(MeshRenderer))
+        GameObject dungeonFloor = new GameObject("Dungeon Floor Mesh", typeof(MeshFilter), typeof(MeshRenderer))
         {
             transform =
             {
@@ -154,6 +221,7 @@ public class DungeonCreator : MonoBehaviour
         
         dungeonFloor.GetComponent<MeshFilter>().mesh = mesh;
         dungeonFloor.GetComponent<MeshRenderer>().material = material;
+        dungeonFloor.gameObject.AddComponent<BoxCollider>();
         dungeonFloor.layer = dungeonLayerIndex;
 
         for (int row = (int) bottomLeftV.x; row < (int) bottomRightV.x; row++)
@@ -179,6 +247,8 @@ public class DungeonCreator : MonoBehaviour
             var wallPosition = new Vector3(bottomRightV.x, 0, col);
             AddWallPositionToList(wallPosition, _possibleWallVerticalPositions, _possibleDoorVerticalPositions);
         }
+
+        return dungeonFloor;
     }
 
     private void AddWallPositionToList(Vector3 wallPosition, List<Vector3Int> wallList, List<Vector3Int> doorList)
