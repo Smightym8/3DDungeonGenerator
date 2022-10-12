@@ -8,6 +8,7 @@ public class DungeonCreator : MonoBehaviour
 {
     public int dungeonWidth, dungeonLength;
     public int roomWidthMin, roomLengthMin;
+    public int roomWidthMax, roomLengthMax;
     public int maxIterations;
     public int corridorWidth;
     public Material floorMaterial;
@@ -30,7 +31,7 @@ public class DungeonCreator : MonoBehaviour
     private List<Vector3Int> _possibleWallHorizontalPositions;
     private List<Vector3Int> _possibleWallVerticalPositions;
 
-    private List<GameObject> _dungeonFloors = new List<GameObject>(); 
+    private List<GameObject> _dungeonFloors = new();
     
     // Unity Methods
     void Start()
@@ -45,6 +46,9 @@ public class DungeonCreator : MonoBehaviour
     }
 
     // Custom Methods
+    /// <summary>
+    /// This method is the entry method which calls all the sub method to create the whole dungeon.
+    /// </summary>
     private void CreateDungeon()
     {
         DungeonGenerator generator = new DungeonGenerator(dungeonWidth, dungeonLength);
@@ -52,6 +56,8 @@ public class DungeonCreator : MonoBehaviour
             maxIterations, 
             roomWidthMin, 
             roomLengthMin,
+            roomWidthMax,
+            roomLengthMax,
             roomBottomCornerModifier,
             roomTopCornerModifier,
             roomOffset,
@@ -97,6 +103,7 @@ public class DungeonCreator : MonoBehaviour
             }
     
             // Check distance between start room and each other room
+            // to find the room which is the most distant from the start room
             if (index < listOfRooms.Count / 2 && index > 0)
             {
                 RoomNode currentRoom = (RoomNode)listOfRooms[index];
@@ -109,6 +116,7 @@ public class DungeonCreator : MonoBehaviour
             }
         }
 
+        // Visualize end room if one was found
         if (endRoom != null)
         {
             endRoom.GetComponent<MeshRenderer>().material = endRoomMaterial;    
@@ -120,6 +128,7 @@ public class DungeonCreator : MonoBehaviour
         
         CreateWalls(wallParent);
 
+        // Create the roof
         foreach (var room in listOfRooms)
         {
             _dungeonFloors.Add(
@@ -136,6 +145,11 @@ public class DungeonCreator : MonoBehaviour
         SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
     }
 
+    /// <summary>
+    /// This method spawns the player in a given room
+    /// </summary>
+    /// <param name="player">Is the player game object that will be positioned</param>
+    /// <param name="startRoom">Is the room where the game object will be spawned</param>
     private void SpawnPlayer(GameObject player, RoomNode startRoom)
     {
         var transformPosition = startRoom.CentrePoint;
@@ -143,6 +157,10 @@ public class DungeonCreator : MonoBehaviour
         player.transform.position = transformPosition;
     }
 
+    /// <summary>
+    /// This method creates the walls of the dungeons.
+    /// </summary>
+    /// <param name="wallParent">Is the parent game object for all the walls</param>
     private void CreateWalls(GameObject wallParent)
     {
         foreach (var wallPosition in _possibleWallHorizontalPositions)
@@ -156,12 +174,28 @@ public class DungeonCreator : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// This method creates a new wall game object
+    /// </summary>
+    /// <param name="wallParent">Is the parent game object of the wall that will be created</param>
+    /// <param name="wallPosition">Contains the position where the wall will be created</param>
+    /// <param name="wallPrefab">Is the prefab for the wall object</param>
     private void CreateWall(GameObject wallParent, Vector3Int wallPosition, GameObject wallPrefab)
     {
         GameObject wall = Instantiate(wallPrefab, wallPosition, Quaternion.identity, wallParent.transform);
         wall.layer = dungeonLayerIndex;
     }
 
+    /// <summary>
+    /// This method creates the mesh for the floor and the roof
+    /// </summary>
+    /// <param name="bottomLeftCorner">Contains the bottom left corner of the mesh</param>
+    /// <param name="topRightCorner">Contains the top right corner of the mesh</param>
+    /// <param name="material">Is the material that will be used for the mesh</param>
+    /// <param name="height">Is the height of the generated mesh. It is necessary to use the same method
+    /// for the floor and the roof</param>
+    /// <param name="isFloor">Is a switch variable to change the creation of the triangles</param>
+    /// <returns></returns>
     private GameObject CreateMesh(Vector2 bottomLeftCorner, Vector2 topRightCorner, Material material, int height, bool isFloor)
     {
         Vector3 bottomLeftV = new Vector3(bottomLeftCorner.x, height, bottomLeftCorner.y);
@@ -251,6 +285,12 @@ public class DungeonCreator : MonoBehaviour
         return dungeonFloor;
     }
 
+    /// <summary>
+    /// This method searches the positions for the walls and adds them to a the wallList
+    /// </summary>
+    /// <param name="wallPosition">Contains the position for the wall</param>
+    /// <param name="wallList">Is the list where the wall positions will be added</param>
+    /// <param name="doorList">Contains the positions of the doors for the corridors</param>
     private void AddWallPositionToList(Vector3 wallPosition, List<Vector3Int> wallList, List<Vector3Int> doorList)
     {
         Vector3Int point = Vector3Int.CeilToInt(wallPosition);

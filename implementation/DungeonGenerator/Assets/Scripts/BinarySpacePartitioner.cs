@@ -17,20 +17,22 @@ public class BinarySpacePartitioner
         );
     }
 
-    public List<RoomNode> PrepareNodesCollection(int maxIterations, int roomWidthMin, int roomLengthMin)
+    public List<RoomNode> PrepareNodesCollection(int maxIterations, int roomWidthMin, int roomLengthMin, 
+        int roomWidthMax, int roomLengthMax)
     {
         Queue<RoomNode> graph = new Queue<RoomNode>();
         List<RoomNode> listToReturn = new List<RoomNode>();
         graph.Enqueue(_rootNode);
         listToReturn.Add(_rootNode);
+        
         int iterations = 0;
-
         while ((iterations < maxIterations) && (graph.Count > 0))
         {
             iterations++;
             
             RoomNode currentNode = graph.Dequeue();
-            if ((currentNode.Width >= roomWidthMin * 2) || (currentNode.Length >= roomLengthMin * 2))
+            if ((currentNode.Width >= roomWidthMin * 2) || (currentNode.Length >= roomLengthMin * 2) || 
+                (currentNode.Width > roomWidthMax * 2) || (currentNode.Length > roomLengthMax * 2))
             {
                 SplitSpace(currentNode, listToReturn, roomLengthMin, roomWidthMin, graph);
             }

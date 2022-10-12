@@ -10,14 +10,17 @@ public class PlayerMovement : MonoBehaviour
     public float smoothTime = 0.1f;
 
     private int _currentSpeed;
-    private bool _isMoving;
-    private bool _isRunning;
     private Vector3 _moveDirection;
     private float _turnSmoothVelocity;
+    private Rigidbody _rigidbody;
+    
+    private bool _isMoving;
+    private bool _isRunning;
+    private bool _isAttacking;
     
     private static readonly int IsWalking = Animator.StringToHash("isWalking");
     private static readonly int IsRunning = Animator.StringToHash("isRunning");
-    private Rigidbody _rigidbody;
+    private static readonly int IsAttacking = Animator.StringToHash("isAttacking");
 
     private void Awake()
     {
@@ -31,7 +34,8 @@ public class PlayerMovement : MonoBehaviour
         float vertical = Input.GetAxisRaw("Vertical");
         Vector3 direction = new Vector3(horizontal, 0, vertical).normalized;
 
-        if (direction.magnitude >= 0.1)
+        // Move
+        if ((direction.magnitude >= 0.1) && !_isAttacking)
         {
             _isMoving = true;
             _moveDirection = direction;
@@ -43,7 +47,9 @@ public class PlayerMovement : MonoBehaviour
             animator.SetBool(IsWalking, false);
         }
         
-        if (Input.GetKeyDown(KeyCode.LeftShift))
+        
+        // Run
+        if (Input.GetKeyDown(KeyCode.LeftShift) && !_isAttacking)
         {
             _isRunning = true;
             animator.SetBool(IsRunning, true);
@@ -53,6 +59,13 @@ public class PlayerMovement : MonoBehaviour
         {
             _isRunning = false;
             animator.SetBool(IsRunning, false);
+        }
+
+        // Attack
+        if (Input.GetKeyDown(KeyCode.Space) && !_isMoving)
+        {
+            _isAttacking = true;
+            animator.SetBool(IsAttacking, true);
         }
     }
 
@@ -85,5 +98,11 @@ public class PlayerMovement : MonoBehaviour
         {
             _currentSpeed = walkingSpeed;
         }
+    }
+
+    private void Attack()
+    {
+        animator.SetBool(IsAttacking, false);
+        _isAttacking = false;
     }
 }

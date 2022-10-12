@@ -14,11 +14,12 @@ public class DungeonGenerator
         _dungeonWidth = dungeonWidth;
     }
 
-    public List<Node> CalculateDungeon(int maxIterations, int roomWidthMin, int roomLengthMin, 
-        float roomBottomCornerModifier, float roomTopCornerModifier, int roomOffset, int corridorWidth)
+    public List<Node> CalculateDungeon(int maxIterations, int roomWidthMin, int roomLengthMin, int roomWidthMax, 
+        int roomLengthMax, float roomBottomCornerModifier, float roomTopCornerModifier, int roomOffset, 
+        int corridorWidth)
     {
         BinarySpacePartitioner bsp = new BinarySpacePartitioner(_dungeonWidth, _dungeonLength);
-        _allNodes = bsp.PrepareNodesCollection(maxIterations, roomWidthMin, roomLengthMin);
+        _allNodes = bsp.PrepareNodesCollection(maxIterations, roomWidthMin, roomLengthMin, roomWidthMax, roomLengthMax);
 
         List<Node> roomSpaces = StructureHelper.TraverseGraphToExtractLowestLeaves(bsp.RootNode);
         RoomGenerator roomGenerator = new RoomGenerator();
