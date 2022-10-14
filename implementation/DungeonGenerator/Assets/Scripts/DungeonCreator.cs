@@ -24,7 +24,11 @@ public class DungeonCreator : MonoBehaviour
     [Range(0.0f, 2.0f)]
     public int roomOffset;
     public GameObject wallVertical, wallHorizontal;
+    
     public GameObject playerPrefab;
+    public List<GameObject> enemyPrefabs;
+    public List<RuntimeAnimatorController> enemyAnimators;
+    public List<Avatar> enemyAvatars;
     
     private List<Vector3Int> _possibleDoorVerticalPositions;
     private List<Vector3Int> _possibleDoorHorizontalPositions;
@@ -143,6 +147,7 @@ public class DungeonCreator : MonoBehaviour
         }
         
         SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
+        SpawnEnemy(enemyPrefabs[0], enemyAnimators[0], enemyAvatars[0], (RoomNode) listOfRooms[1]);
     }
 
     /// <summary>
@@ -152,9 +157,22 @@ public class DungeonCreator : MonoBehaviour
     /// <param name="startRoom">Is the room where the game object will be spawned</param>
     private void SpawnPlayer(GameObject player, RoomNode startRoom)
     {
-        var transformPosition = startRoom.CentrePoint;
+        var spawnPosition = startRoom.CentrePoint;
+        spawnPosition.y = 0.02f;
+        player.transform.position = spawnPosition;
+    }
+
+    private void SpawnEnemy(GameObject enemy, RuntimeAnimatorController animatorController, Avatar avatar, RoomNode room)
+    {
+        var transformPosition = room.CentrePoint;
         transformPosition.y = 0.02f;
-        player.transform.position = transformPosition;
+        
+        var instantiatedEnemy = Instantiate(enemy);
+        instantiatedEnemy.transform.position = transformPosition;
+        instantiatedEnemy.AddComponent<Animator>();
+        Animator animator = instantiatedEnemy.GetComponent<Animator>();
+        animator.runtimeAnimatorController = animatorController;
+        animator.avatar = avatar;
     }
 
     /// <summary>

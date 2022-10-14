@@ -62,7 +62,7 @@ public class PlayerMovement : MonoBehaviour
         }
 
         // Attack
-        if (Input.GetKeyDown(KeyCode.Space) && !_isMoving)
+        if (Input.GetKeyDown(KeyCode.Mouse0) && !_isMoving)
         {
             _isAttacking = true;
             animator.SetBool(IsAttacking, true);
