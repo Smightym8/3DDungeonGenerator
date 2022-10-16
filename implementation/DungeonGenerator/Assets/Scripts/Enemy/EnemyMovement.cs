@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Enemy
@@ -7,6 +8,7 @@ namespace Enemy
         public Animator animator;
 
         private static readonly int IsAttacking = Animator.StringToHash("isAttacking");
+        private static readonly int IsDead = Animator.StringToHash("isDead");
         
         public void StartAttacking()
         {
@@ -17,7 +19,18 @@ namespace Enemy
         {
             animator.SetBool(IsAttacking, false);
 
-            FindObjectOfType<PlayerMovement>().GetComponentInChildren<Health>().maxHealth -= 10;
+            var health = FindObjectOfType<PlayerMovement>().GetComponentInChildren<Health>(); 
+            health.maxHealth -= 10;
+        }
+
+        public void Die()
+        {
+            animator.SetBool(IsDead, true);
+        }
+
+        private void OnCollisionEnter(Collision collision)
+        {
+            Debug.Log($"Collision with {collision.gameObject.name}");
         }
     }    
 }

@@ -151,7 +151,11 @@ namespace Dungeon
             }
             
             SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
-            SpawnEnemy(enemyPrefabs[0], enemyAnimators[0], enemyAvatars[0], (RoomNode) listOfRooms[1]);
+
+            for (int i = 1; i < listOfRooms.Count; i++)
+            {
+                SpawnEnemy(enemyPrefabs[0], enemyAnimators[0], enemyAvatars[0], (RoomNode) listOfRooms[i]);    
+            }
         }
 
         /// <summary>
