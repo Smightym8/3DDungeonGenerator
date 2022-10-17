@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Diagnostics;
 using System.Linq;
+using Unity.AI.Navigation;
+using UnityEngine.AI;
 using Debug = UnityEngine.Debug;
 
 namespace Dungeon
@@ -17,8 +19,7 @@ namespace Dungeon
         public Material roofMaterial;
         public Material startRoomMaterial;
         public Material endRoomMaterial;
-        public int dungeonLayerIndex = 6; // Dungeon layer for the camera
-        
+
         [Range(0.0f, 0.3f)]
         public float roomBottomCornerModifier;
         [Range(0.7f, 1.0f)]
@@ -31,15 +32,23 @@ namespace Dungeon
         public List<GameObject> enemyPrefabs;
         public List<RuntimeAnimatorController> enemyAnimators;
         public List<Avatar> enemyAvatars;
-        
+
         private List<Vector3Int> _possibleDoorVerticalPositions;
         private List<Vector3Int> _possibleDoorHorizontalPositions;
         private List<Vector3Int> _possibleWallHorizontalPositions;
         private List<Vector3Int> _possibleWallVerticalPositions;
 
         private readonly List<GameObject> _dungeonFloors = new();
+        private GameObject _navMeshRoot;
 
         // Unity Methods
+        private void Awake () {
+            if (_navMeshRoot == null)
+            {
+                _navMeshRoot = new GameObject("NavMeshRoot");
+            }
+        }
+        
         void Start()
         {
             Stopwatch sw = new Stopwatch();
@@ -110,7 +119,7 @@ namespace Dungeon
         
                 // Check distance between start room and each other room
                 // to find the room which is the most distant from the start room
-                if (index < listOfRooms.Count / 2 && index > 0)
+                if (index > 0 && index < listOfRooms.Count / 2)
                 {
                     RoomNode currentRoom = (RoomNode)listOfRooms[index];
                     float dist = Vector3.Distance(startRoom.CentrePoint, currentRoom.CentrePoint);
@@ -122,6 +131,8 @@ namespace Dungeon
                 }
             }
 
+            BuildNavMesh();
+
             // Visualize end room if one was found
             if (endRoom != null)
             {
@@ -131,7 +142,7 @@ namespace Dungeon
             var wallParent = new GameObject("WallParent")
             {
                 transform = { parent = transform },
-                layer = dungeonLayerIndex
+                layer = Layer.WallLayer
             };
 
             CreateWalls(wallParent);
@@ -152,9 +163,30 @@ namespace Dungeon
             
             SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
 
-            for (int i = 1; i < listOfRooms.Count; i++)
+            for (int i = 1; i < listOfRooms.Count / 2; i++)
             {
-                SpawnEnemy(enemyPrefabs[0], enemyAnimators[0], enemyAvatars[0], (RoomNode) listOfRooms[i]);    
+                SpawnEnemy(enemyPrefabs[0], enemyAnimators[0], enemyAvatars[0], (RoomNode) listOfRooms[i]);
+            }
+        }
+        
+        public void BuildNavMesh() {
+            int agentTypeCount = NavMesh.GetSettingsCount();
+            if (agentTypeCount < 1) { return; }
+
+            for (int i = 0; i < _dungeonFloors.Count; ++i)
+            {
+                _dungeonFloors[i].transform.SetParent(_navMeshRoot.transform, true);
+            }
+        
+            for (int i = 0; i < agentTypeCount; ++i) {
+                NavMeshBuildSettings settings = NavMesh.GetSettingsByIndex(i);
+                NavMeshSurface navMeshSurface = gameObject.AddComponent<NavMeshSurface>();
+                navMeshSurface.agentTypeID = settings.agentTypeID;
+     
+                navMeshSurface.GetBuildSettings();
+                navMeshSurface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
+     
+                navMeshSurface.BuildNavMesh();
             }
         }
 
@@ -186,22 +218,19 @@ namespace Dungeon
             instantiatedEnemy.transform.position = spawnPosition;
             
             // Add animation controller to instantiated enemy
-            instantiatedEnemy.AddComponent<Animator>();
+            //instantiatedEnemy.AddComponent<Animator>();
             Animator animator = instantiatedEnemy.GetComponent<Animator>();
             animator.runtimeAnimatorController = animatorController;
             animator.avatar = avatar;
-            
-            // Add collider
-            instantiatedEnemy.AddComponent<BoxCollider>();
-            var boxCollider = instantiatedEnemy.GetComponent<BoxCollider>();
-            boxCollider.center = new Vector3(0.3f,0.8f,0);
-            boxCollider.size = new Vector3(1.5f, 1.5f, 0.5f);
-            
+
             // Add Rigidbody
             instantiatedEnemy.AddComponent<Rigidbody>();
             var rigidBody = instantiatedEnemy.GetComponent<Rigidbody>();
             rigidBody.isKinematic = true;
             
+            // Add NavMeshAgent
+            instantiatedEnemy.AddComponent<NavMeshAgent>();
+
             // Add scripts
             instantiatedEnemy.AddComponent<Enemy.EnemyMovement>();
             instantiatedEnemy.AddComponent<Health>();
@@ -240,7 +269,7 @@ namespace Dungeon
         private void CreateWall(GameObject wallParent, Vector3Int wallPosition, GameObject wallPrefab)
         {
             GameObject wall = Instantiate(wallPrefab, wallPosition, Quaternion.identity, wallParent.transform);
-            wall.layer = dungeonLayerIndex;
+            wall.layer = Layer.WallLayer;
         }
 
         /// <summary>
@@ -313,7 +342,7 @@ namespace Dungeon
             dungeonFloor.GetComponent<MeshFilter>().mesh = mesh;
             dungeonFloor.GetComponent<MeshRenderer>().material = material;
             dungeonFloor.gameObject.AddComponent<BoxCollider>();
-            dungeonFloor.layer = dungeonLayerIndex;
+            dungeonFloor.layer = Layer.GroundLayer;
 
             for (int row = (int) bottomLeftV.x; row < (int) bottomRightV.x; row++)
             {
