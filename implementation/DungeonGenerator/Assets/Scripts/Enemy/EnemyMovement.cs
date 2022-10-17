@@ -24,8 +24,8 @@ namespace Enemy
         public bool hasAlreadyAttacked;
         
         // States
-        public float sightRange = 10f;
-        public float attackRange = 5f;
+        public float sightRange = 15f;
+        public float attackRange = 1.5f;
         public bool isPlayerInSightRange, isPlayerInAttackRange;
         
         // Animations
@@ -47,20 +47,22 @@ namespace Enemy
         {
             // Check for sight and attack range
             var position = transform.position;
-            isPlayerInSightRange = Physics.CheckSphere(position, sightRange, playerLayer);
-            isPlayerInAttackRange = Physics.CheckSphere(position, attackRange, playerLayer);
+            var playerPosition = player.position;
+            isPlayerInSightRange = Vector3.Distance(position, playerPosition) < sightRange;
+            isPlayerInAttackRange = Vector3.Distance(position, playerPosition) < attackRange;
             
             // Switch to appropriate state
-            if (!isPlayerInSightRange && !isPlayerInAttackRange && !_isAttacking && !_isDying)
+            if (!isPlayerInSightRange && !isPlayerInAttackRange && !_isDying)
             {
                 Patroling();
             }
-            else if (isPlayerInSightRange && !isPlayerInAttackRange && !_isAttacking && !_isDying)
+            else if (isPlayerInSightRange && !isPlayerInAttackRange && !_isDying)
             {
                 ChasePlayer();
             } 
-            else if (isPlayerInSightRange && isPlayerInAttackRange && !_isWalking && !_isDying)
+            else if (isPlayerInSightRange && isPlayerInAttackRange && !_isDying)
             {
+                animator.SetBool(IsWalking, false);
                 AttackPlayer();
             }
         }
@@ -141,8 +143,14 @@ namespace Enemy
         {
             animator.SetBool(IsAttacking, false);
 
-            //var health = FindObjectOfType<PlayerMovement>().GetComponentInChildren<Health>(); 
-            //health.maxHealth -= 10;
+            // Check distance again, player could run away before attack starts
+            float distance = Vector3.Distance(transform.position, player.position);
+            
+            if (distance < 2)
+            {
+                var health = FindObjectOfType<PlayerMovement>().GetComponentInChildren<Health>(); 
+                health.maxHealth -= 10;
+            }
         }
 
         public void Die()

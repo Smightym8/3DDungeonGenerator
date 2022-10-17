@@ -228,6 +228,9 @@ namespace Dungeon
             var rigidBody = instantiatedEnemy.GetComponent<Rigidbody>();
             rigidBody.isKinematic = true;
             
+            // Add Collider
+            instantiatedEnemy.AddComponent<CapsuleCollider>();
+            
             // Add NavMeshAgent
             instantiatedEnemy.AddComponent<NavMeshAgent>();
 
