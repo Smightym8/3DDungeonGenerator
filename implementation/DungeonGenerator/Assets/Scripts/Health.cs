@@ -12,7 +12,7 @@ public class Health : MonoBehaviour
 
         if (gameObject.tag.Equals(Tag.Enemy))
         {
-            GetComponent<EnemyMovement>().StartAttacking();
+            GetComponent<EnemyMovement>().GotHit();
         }
     }
 

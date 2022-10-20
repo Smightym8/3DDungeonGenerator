@@ -115,7 +115,8 @@ public class PlayerMovement : MonoBehaviour
             
             if (distance < 2)
             {
-                health.maxHealth -= 60;
+                // TODO: Enable damage again
+                //health.maxHealth -= 60;
                 health.ActivateAttacking();
             }
         }
