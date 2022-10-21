@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Diagnostics;
@@ -15,6 +16,7 @@ namespace Dungeon
         public int roomWidthMax, roomLengthMax;
         public int maxIterations;
         public int corridorWidth;
+        public int dungeonHeight;
         public Material floorMaterial;
         public Material roofMaterial;
         public Material startRoomMaterial;
@@ -39,19 +41,15 @@ namespace Dungeon
         private List<Vector3Int> _possibleWallVerticalPositions;
 
         private readonly List<GameObject> _dungeonFloors = new();
-        private GameObject _navMeshRoot;
+
+        private List<Vector3> _vertices;
+        private int[] _triangles;
+        private Vector2[] _uvCoordinates;
 
         // Unity Methods
-        private void Awake () {
-            if (_navMeshRoot == null)
-            {
-                _navMeshRoot = new GameObject("NavMeshRoot");
-            }
-        }
-        
-        void Start()
+        private void Start()
         {
-            Stopwatch sw = new Stopwatch();
+            var sw = new Stopwatch();
         
             sw.Start();
             CreateDungeon();
@@ -95,24 +93,26 @@ namespace Dungeon
                 if (index == 0)
                 {
                     _dungeonFloors.Add(
-                        CreateMesh(
+                        CreateFloorMesh(
                             room.BottomLeftAreaCorner,
                             room.TopRightAreaCorner,
                             startRoomMaterial,
                             0,
-                            true
+                            true,
+                            index
                         )
                     );
                 }
                 else
                 {
                     _dungeonFloors.Add(
-                        CreateMesh(
+                        CreateFloorMesh(
                             room.BottomLeftAreaCorner,
                             room.TopRightAreaCorner,
                             floorMaterial,
                             0,
-                            true
+                            true,
+                            index
                         )
                     );
                 }
@@ -131,62 +131,97 @@ namespace Dungeon
                 }
             }
 
-            BuildNavMesh();
-
             // Visualize end room if one was found
             if (endRoom != null)
             {
                 endRoom.GetComponent<MeshRenderer>().material = endRoomMaterial;    
             }
 
-            var wallParent = new GameObject("WallParent")
-            {
-                transform = { parent = transform },
-                layer = Layer.WallLayer
-            };
-
-            CreateWalls(wallParent);
+            //CreateWalls(wallParent);
 
             // Create the roof
-            foreach (var room in listOfRooms)
+            foreach (var (room, index) in listOfRooms.Select((room, index) => ( room, index )))
             {
                 _dungeonFloors.Add(
-                    CreateMesh(
+                    CreateFloorMesh(
                         room.BottomLeftAreaCorner,
                         room.TopRightAreaCorner,
                         roofMaterial,
-                        6,
-                        false
+                        dungeonHeight,
+                        false,
+                        index
                     )
                 );
             }
-            
-            SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
 
-            for (int i = 1; i < listOfRooms.Count / 2; i++)
+            _vertices = new List<Vector3>();
+            foreach (var room in listOfRooms)
             {
-                SpawnEnemy(enemyPrefabs[0], enemyAnimators[0], enemyAvatars[0], (RoomNode) listOfRooms[i]);
+                CreateWallMesh(room);
+            }
+            
+            // Remove duplicated from vertices
+            _vertices = _vertices
+                .GroupBy(x => x)
+                .Where(x => !x.Skip(1).Any())
+                .Select(x => x.Key)
+                .ToList();
+
+            SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
+        }
+
+        private void CreateWallMesh(Node room)
+        {
+            // TODO: Create walls for each room and corridor
+            // TODO: Remove points that occur twice
+            
+            // Horizontal
+            for (var height = 0; height <= dungeonHeight; height++)
+            {
+                for (var x = room.BottomLeftAreaCorner.x; x <= room.BottomRightAreaCorner.x; x++)
+                {
+                    _vertices.Add(new Vector3(x, height, room.BottomLeftAreaCorner.y));
+                }    
+            }
+           
+            // Horizontal
+            for (var height = 0; height <= dungeonHeight; height++)
+            {
+                for (var x = room.TopLeftAreaCorner.x; x <= room.TopRightAreaCorner.x; x++)
+                {
+                    _vertices.Add(new Vector3(x, height, room.TopLeftAreaCorner.y));
+                }
+            }
+            
+            // Vertical
+            for (var height = 0; height <= dungeonHeight; height++)
+            {
+                for (var z = room.BottomLeftAreaCorner.y + 1; z < room.TopLeftAreaCorner.y; z++)
+                {
+                    _vertices.Add(new Vector3(room.BottomLeftAreaCorner.x, height, z));
+                }
+            }
+           
+            // Vertical
+            for (var height = 0; height <= dungeonHeight; height++)
+            {
+                for (var z = room.BottomRightAreaCorner.y + 1; z < room.TopRightAreaCorner.y; z++)
+                {
+                    _vertices.Add(new Vector3(room.BottomRightAreaCorner.x, height, z));
+                }
             }
         }
         
-        public void BuildNavMesh() {
-            int agentTypeCount = NavMesh.GetSettingsCount();
-            if (agentTypeCount < 1) { return; }
+        // For developing purpose to see if the vertices are on the correct position
+        private void OnDrawGizmos()
+        {
+            if (_vertices == null) return;
 
-            for (int i = 0; i < _dungeonFloors.Count; ++i)
+            Gizmos.color = Color.black;
+
+            foreach (var vertex in _vertices)
             {
-                _dungeonFloors[i].transform.SetParent(_navMeshRoot.transform, true);
-            }
-        
-            for (int i = 0; i < agentTypeCount; ++i) {
-                NavMeshBuildSettings settings = NavMesh.GetSettingsByIndex(i);
-                NavMeshSurface navMeshSurface = gameObject.AddComponent<NavMeshSurface>();
-                navMeshSurface.agentTypeID = settings.agentTypeID;
-     
-                navMeshSurface.GetBuildSettings();
-                navMeshSurface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
-     
-                navMeshSurface.BuildNavMesh();
+                Gizmos.DrawSphere(vertex, 0.1f);
             }
         }
 
@@ -200,50 +235,6 @@ namespace Dungeon
             var spawnPosition = startRoom.CentrePoint;
             spawnPosition.y = 0.02f;
             player.transform.position = spawnPosition;
-        }
-
-        /// <summary>
-        /// This method spawns an enemy in a given room
-        /// </summary>
-        /// <param name="enemy">Contains the prefab of the enemy</param>
-        /// <param name="animatorController">Contains the controller that will be used for the animations of the enemy</param>
-        /// <param name="avatar">Contains the avatar that is needed for the animations</param>
-        /// <param name="room">Contains the room where the enemy will be spawned</param>
-        private void SpawnEnemy(GameObject enemy, RuntimeAnimatorController animatorController, Avatar avatar, RoomNode room)
-        {
-            var spawnPosition = room.CentrePoint;
-            spawnPosition.y = 0.02f;
-
-            var instantiatedEnemy = Instantiate(enemy);
-            instantiatedEnemy.transform.position = spawnPosition;
-            
-            // Add animation controller to instantiated enemy
-            //instantiatedEnemy.AddComponent<Animator>();
-            Animator animator = instantiatedEnemy.GetComponent<Animator>();
-            animator.runtimeAnimatorController = animatorController;
-            animator.avatar = avatar;
-
-            // Add Rigidbody
-            instantiatedEnemy.AddComponent<Rigidbody>();
-            var rigidBody = instantiatedEnemy.GetComponent<Rigidbody>();
-            rigidBody.isKinematic = true;
-            
-            // Add Collider
-            instantiatedEnemy.AddComponent<CapsuleCollider>();
-            
-            // Add NavMeshAgent
-            instantiatedEnemy.AddComponent<NavMeshAgent>();
-
-            // Add scripts
-            instantiatedEnemy.AddComponent<Enemy.EnemyMovement>();
-            instantiatedEnemy.AddComponent<Health>();
-            
-            // Assign animator to enemy movement script
-            var enemyMovementScript = instantiatedEnemy.GetComponent<Enemy.EnemyMovement>();
-            enemyMovementScript.animator = animator;
-            
-            // Add tag
-            instantiatedEnemy.tag = Tag.Enemy;
         }
 
         /// <summary>
@@ -272,6 +263,9 @@ namespace Dungeon
         private void CreateWall(GameObject wallParent, Vector3Int wallPosition, GameObject wallPrefab)
         {
             GameObject wall = Instantiate(wallPrefab, wallPosition, Quaternion.identity, wallParent.transform);
+            
+            wall.transform.localScale = new Vector3(1, dungeonHeight, 1);
+            
             wall.layer = Layer.WallLayer;
         }
 
@@ -285,7 +279,8 @@ namespace Dungeon
         /// for the floor and the roof</param>
         /// <param name="isFloor">Is a switch variable to change the creation of the triangles</param>
         /// <returns></returns>
-        private GameObject CreateMesh(Vector2 bottomLeftCorner, Vector2 topRightCorner, Material material, int height, bool isFloor)
+        private GameObject CreateFloorMesh(Vector2 bottomLeftCorner, Vector2 topRightCorner, Material material, 
+            int height, bool isFloor, int index)
         {
             Vector3 bottomLeftV = new Vector3(bottomLeftCorner.x, height, bottomLeftCorner.y);
             Vector3 bottomRightV = new Vector3(topRightCorner.x, height, bottomLeftCorner.y);
@@ -333,7 +328,7 @@ namespace Dungeon
                 triangles = triangles
             };
 
-            GameObject dungeonFloor = new GameObject("Dungeon Floor Mesh", typeof(MeshFilter), typeof(MeshRenderer))
+            GameObject dungeonFloor = new GameObject("Dungeon Floor Mesh " + index, typeof(MeshFilter), typeof(MeshRenderer))
             {
                 transform =
                 {
@@ -382,7 +377,7 @@ namespace Dungeon
         /// <param name="doorList">Contains the positions of the doors for the corridors</param>
         private void AddWallPositionToList(Vector3 wallPosition, List<Vector3Int> wallList, List<Vector3Int> doorList)
         {
-            Vector3Int point = Vector3Int.CeilToInt(wallPosition);
+            Vector3Int point = Vector3Int.CeilToInt(new Vector3(wallPosition.x, 0, wallPosition.z));
 
             if (wallList.Contains(point))
             {

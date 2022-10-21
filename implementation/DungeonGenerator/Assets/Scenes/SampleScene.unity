@@ -324,7 +324,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 279191908}
-  m_LocalRotation: {x: 0.14052637, y: 1e-45, z: -0, w: 0.99007696}
+  m_LocalRotation: {x: 0.14052637, y: -0, z: -0, w: 0.99007696}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -370,7 +370,8 @@ MonoBehaviour:
   roomWidthMax: 200
   roomLengthMax: 200
   maxIterations: 20
-  corridorWidth: 10
+  corridorWidth: 5
+  dungeonHeight: 6
   floorMaterial: {fileID: 2100000, guid: d6c86796e41109349916ebb4500273ee, type: 2}
   roofMaterial: {fileID: 2100000, guid: d6c86796e41109349916ebb4500273ee, type: 2}
   startRoomMaterial: {fileID: 2100000, guid: 7d6953bd33824b942a9ea9810c066326, type: 2}
@@ -955,7 +956,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1477826468}
-  m_LocalRotation: {x: 0.104469135, y: 0.000000017638886, z: -0.000000001852858, w: 0.9945282}
+  m_LocalRotation: {x: 0.104469135, y: 0.000000017638879, z: -0.0000000018528571, w: 0.9945282}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -1845,19 +1846,6 @@ MonoBehaviour:
   walkingSpeed: 3
   runningSpeed: 6
   smoothTime: 0.1
---- !u!65 &1968490575
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1968490571}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 0.5, y: 2, z: 1}
-  m_Center: {x: 0, y: 1, z: 0}
 --- !u!54 &1968490576
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1887,3 +1875,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHealth: 100
+--- !u!136 &1968490578
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1968490571}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_Enabled: 1
+  m_Radius: 0.5
+  m_Height: 2.2
+  m_Direction: 1
+  m_Center: {x: 0, y: 1, z: 0}
