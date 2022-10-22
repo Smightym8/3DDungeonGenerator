@@ -31,9 +31,6 @@ namespace Dungeon
         public GameObject wallVertical, wallHorizontal;
         
         public GameObject playerPrefab;
-        public List<GameObject> enemyPrefabs;
-        public List<RuntimeAnimatorController> enemyAnimators;
-        public List<Avatar> enemyAvatars;
 
         private List<Vector3Int> _possibleDoorVerticalPositions;
         private List<Vector3Int> _possibleDoorHorizontalPositions;
@@ -155,74 +152,160 @@ namespace Dungeon
             }
 
             _vertices = new List<Vector3>();
+
             foreach (var room in listOfRooms)
             {
-                CreateWallMesh(room);
+                CreateWalls(room);
             }
-            
-            // Remove duplicated from vertices
-            _vertices = _vertices
-                .GroupBy(x => x)
-                .Where(x => !x.Skip(1).Any())
-                .Select(x => x.Key)
-                .ToList();
 
             SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
         }
 
-        private void CreateWallMesh(Node room)
+        private void CreateWalls(Node room)
         {
-            // TODO: Create walls for each room and corridor
-            // TODO: Remove points that occur twice
-            
             // Horizontal
+            var vertices = CollectHorizontalWallVertices(room.BottomLeftAreaCorner, room.BottomRightAreaCorner);
+            CreateWallMesh(vertices, room.BottomLeftAreaCorner, room.BottomRightAreaCorner, true,true);
+
+            // Horizontal
+            vertices = CollectHorizontalWallVertices(room.TopLeftAreaCorner, room.TopRightAreaCorner);
+            CreateWallMesh(vertices, room.TopLeftAreaCorner, room.TopRightAreaCorner, true, false);
+
+            // Vertical
+            vertices = CollectVerticalWallVertices(room.BottomLeftAreaCorner, room.TopLeftAreaCorner);
+            CreateWallMesh(vertices, room.BottomLeftAreaCorner, room.TopLeftAreaCorner, false, false);
+
+            // Vertical
+            vertices = CollectVerticalWallVertices(room.BottomRightAreaCorner, room.TopRightAreaCorner);
+            CreateWallMesh(vertices, room.BottomRightAreaCorner, room.TopRightAreaCorner, false, true);
+        }
+
+        private List<Vector3> CollectHorizontalWallVertices(Vector2Int startCorner, Vector2Int endCorner)
+        {
+            var vertices = new List<Vector3>();
+            
             for (var height = 0; height <= dungeonHeight; height++)
             {
-                for (var x = room.BottomLeftAreaCorner.x; x <= room.BottomRightAreaCorner.x; x++)
+                for (var x = startCorner.x; x <= endCorner.x; x++)
                 {
-                    _vertices.Add(new Vector3(x, height, room.BottomLeftAreaCorner.y));
+                    var vertex = new Vector3(x, height, startCorner.y);
+                    vertices.Add(vertex);
                 }    
             }
-           
-            // Horizontal
+            
+            return vertices;
+        }
+        
+        private List<Vector3> CollectVerticalWallVertices(Vector2Int startCorner, Vector2Int endCorner)
+        {
+            var vertices = new List<Vector3>();
+            
             for (var height = 0; height <= dungeonHeight; height++)
             {
-                for (var x = room.TopLeftAreaCorner.x; x <= room.TopRightAreaCorner.x; x++)
+                for (var z = startCorner.y; z <= endCorner.y; z++)
                 {
-                    _vertices.Add(new Vector3(x, height, room.TopLeftAreaCorner.y));
+                    var vertex = new Vector3(startCorner.x, height, z);
+                    vertices.Add(vertex);
                 }
             }
             
-            // Vertical
-            for (var height = 0; height <= dungeonHeight; height++)
+            return vertices;
+        }
+
+        private void CreateWallMesh(List<Vector3> vertices, Vector2Int startCorner, Vector2Int endCorner, 
+            bool isHorizontal, bool isFlip)
+        {
+            int length = isHorizontal ? Math.Abs(endCorner.x - startCorner.x) : Math.Abs(endCorner.y - startCorner.y);
+
+            int[] triangles = new int[(length * dungeonHeight * 6)];
+            int tris = 0;
+            int vert = 0;
+
+            if (!isFlip)
             {
-                for (var z = room.BottomLeftAreaCorner.y + 1; z < room.TopLeftAreaCorner.y; z++)
+                for (int y = 0; y < dungeonHeight; y++)
                 {
-                    _vertices.Add(new Vector3(room.BottomLeftAreaCorner.x, height, z));
+                    for (int x = 0; x < length; x++)
+                    {
+                        triangles[tris] = vert;
+                        triangles[tris + 1] = triangles[tris + 4] = vert + length + 1;
+                        triangles[tris + 2] = triangles[tris + 3] = vert + 1;
+                        triangles[tris + 5] = vert + length + 2;
+
+                        vert++;
+                        tris += 6;
+                    }
+
+                    vert++;
                 }
             }
-           
-            // Vertical
-            for (var height = 0; height <= dungeonHeight; height++)
+            else
             {
-                for (var z = room.BottomRightAreaCorner.y + 1; z < room.TopRightAreaCorner.y; z++)
+                for (int y = 0; y < dungeonHeight; y++)
                 {
-                    _vertices.Add(new Vector3(room.BottomRightAreaCorner.x, height, z));
+                    for (int x = 0; x < length; x++)
+                    {
+                        triangles[tris] = vert;
+                        triangles[tris + 1] = triangles[tris + 4] = vert + 1; 
+                        triangles[tris + 2] = triangles[tris + 3] = vert + length + 1;
+                        triangles[tris + 5] = vert + length + 2;
+
+                        vert++;
+                        tris += 6;
+                    }
+
+                    vert++;
                 }
             }
+
+            Vector2[] uvCoordinates = new Vector2[vertices.Count];
+            for (int i = 0, y = 0; y <= dungeonHeight; y++)
+            {
+                for (int x = 0; x <= length; x++)
+                {
+                    uvCoordinates[i] = new Vector2(x, y);
+                    i++;
+                }
+            }
+
+            var mesh = new Mesh
+            {
+                vertices = vertices.ToArray(),
+                triangles = triangles,
+                uv = uvCoordinates
+            };
+            
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds(); // Checking how big the mesh is for the camera
+
+            var wall = new GameObject("Wall", typeof(MeshFilter), typeof(MeshRenderer))
+            {
+                transform =
+                {
+                    position = Vector3.zero,
+                    localScale = Vector3.one
+                }
+            };
+            
+            wall.GetComponent<MeshFilter>().mesh = mesh;
+            wall.GetComponent<MeshRenderer>().material = floorMaterial;
+            wall.layer = Layer.WallLayer;
+            wall.isStatic = true;
         }
         
-        // For developing purpose to see if the vertices are on the correct position
-        private void OnDrawGizmos()
+        private void AddVertexToList(Vector3 vertex)
         {
-            if (_vertices == null) return;
-
-            Gizmos.color = Color.black;
-
-            foreach (var vertex in _vertices)
+            _vertices.Add(vertex);
+            /*
+            if (_vertices.Contains(vertex))
             {
-                Gizmos.DrawSphere(vertex, 0.1f);
+                _vertices.Remove(vertex);
             }
+            else
+            {
+                _vertices.Add(vertex);    
+            }
+            */
         }
 
         /// <summary>
@@ -341,6 +424,7 @@ namespace Dungeon
             dungeonFloor.GetComponent<MeshRenderer>().material = material;
             dungeonFloor.gameObject.AddComponent<BoxCollider>();
             dungeonFloor.layer = Layer.GroundLayer;
+            dungeonFloor.isStatic = true;
 
             for (int row = (int) bottomLeftV.x; row < (int) bottomRightV.x; row++)
             {
