@@ -16,6 +16,8 @@ namespace Dungeon
             BottomRightAreaCorner = new Vector2Int(topRightAreaCorner.x, bottomLeftAreaCorner.y);
             TopLeftAreaCorner = new Vector2Int(bottomLeftAreaCorner.x, topRightAreaCorner.y);
             TreeLayerIndex = index;
+            IsCorridor = false;
+            IsHorizontalCorridor = false;
         }
     }
 }

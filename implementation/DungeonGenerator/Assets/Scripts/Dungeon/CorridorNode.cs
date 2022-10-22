@@ -17,6 +17,7 @@ namespace Dungeon
             _structure1 = structure1;
             _structure2 = structure2;
             _corridorWidth = corridorWidth;
+            IsCorridor = true;
 
             GenerateCorridor();
         }
@@ -103,6 +104,7 @@ namespace Dungeon
             TopRightAreaCorner = new Vector2Int(rightStructure.TopLeftAreaCorner.x, y + _corridorWidth);
             BottomRightAreaCorner = new Vector2Int(TopRightAreaCorner.x, BottomLeftAreaCorner.y);
             TopLeftAreaCorner = new Vector2Int(BottomLeftAreaCorner.x, TopRightAreaCorner.y);
+            IsHorizontalCorridor = true;
         }
 
         private int GetValidNeighbourForLeftRight(Vector2Int leftNodeUp, Vector2Int leftNodeDown, Vector2Int rightNodeUp, Vector2Int rightNodeDown)
@@ -197,6 +199,7 @@ namespace Dungeon
             TopRightAreaCorner = new Vector2Int(x + _corridorWidth, topStructure.BottomLeftAreaCorner.y);
             BottomRightAreaCorner = new Vector2Int(TopRightAreaCorner.x, BottomLeftAreaCorner.y);
             TopLeftAreaCorner = new Vector2Int(BottomLeftAreaCorner.x, TopRightAreaCorner.y);
+            IsHorizontalCorridor = false;
         }
     
         private int GetValidXForNeighbourUpDown(Vector2Int bottomNodeLeft, Vector2Int bottomNodeRight, 

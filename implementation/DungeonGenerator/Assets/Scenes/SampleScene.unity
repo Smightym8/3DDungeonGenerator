@@ -324,7 +324,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 279191908}
-  m_LocalRotation: {x: 0.14052637, y: -1e-45, z: -0, w: 0.99007696}
+  m_LocalRotation: {x: 0.14052637, y: -5.2184654e-15, z: 1.116223e-15, w: 0.99007696}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -363,25 +363,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1aad1cf95079cb4b88a3dfbc2a7ad01, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  dungeonWidth: 200
-  dungeonLength: 200
-  roomWidthMin: 50
-  roomLengthMin: 50
-  roomWidthMax: 200
-  roomLengthMax: 200
-  maxIterations: 20
-  corridorWidth: 5
-  dungeonHeight: 6
+  dungeonWidth: 150
+  dungeonLength: 150
+  roomWidthMin: 15
+  roomLengthMin: 15
+  roomWidthMax: 30
+  roomLengthMax: 30
+  maxIterations: 60
+  corridorWidth: 4
+  dungeonHeight: 4
+  torchFrequencyInPercent: 10
   floorMaterial: {fileID: 2100000, guid: d6c86796e41109349916ebb4500273ee, type: 2}
   roofMaterial: {fileID: 2100000, guid: d6c86796e41109349916ebb4500273ee, type: 2}
   startRoomMaterial: {fileID: 2100000, guid: 7d6953bd33824b942a9ea9810c066326, type: 2}
   endRoomMaterial: {fileID: 2100000, guid: 25b482e578fd4a446955a0700007fb7d, type: 2}
+  wallMaterial: {fileID: 2100000, guid: d6c86796e41109349916ebb4500273ee, type: 2}
   roomBottomCornerModifier: 0.1
   roomTopCornerModifier: 0.9
   roomOffset: 1
-  wallVertical: {fileID: 8753675751577585064, guid: 76257fc4964cd484989e3a56a342b94e, type: 3}
-  wallHorizontal: {fileID: 2983560248429768675, guid: 0b84e1940b269ca4fbec190d930348ae, type: 3}
   playerPrefab: {fileID: 1968490571}
+  torchPrefab: {fileID: 8060405944448375545, guid: 7970c12d6b19a504fbc82353b8a43abe, type: 3}
+  doorPrefab: {fileID: 416386656469751746, guid: 9175d08a6bdddeb48afa15d1b714d918, type: 3}
 --- !u!4 &507846948
 Transform:
   m_ObjectHideFlags: 0
@@ -950,7 +952,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1477826468}
-  m_LocalRotation: {x: 0.104469135, y: -0.000000017638879, z: 0.0000000018528571, w: 0.9945282}
+  m_LocalRotation: {x: 0.104469135, y: 0.000000020246823, z: -0.0000000021268056, w: 0.9945282}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -1028,7 +1030,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1624330194}
-  m_LocalRotation: {x: 0.12249413, y: -1e-45, z: -0, w: 0.99246925}
+  m_LocalRotation: {x: 0.12249413, y: -2.5274424e-37, z: 9.570108e-38, w: 0.99246925}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0

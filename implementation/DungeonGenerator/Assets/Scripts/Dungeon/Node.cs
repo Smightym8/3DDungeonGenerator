@@ -12,6 +12,8 @@ namespace Dungeon
         public Vector2Int TopRightAreaCorner { get; set; }
         public Vector2Int TopLeftAreaCorner { get; set; }
         public int TreeLayerIndex { get; set; }
+        public bool IsCorridor { get; set; }
+        public bool IsHorizontalCorridor { get; set; }
         private Node Parent { get; }
 
         protected Node(Node parentNode)

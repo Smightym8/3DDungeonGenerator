@@ -6,6 +6,7 @@ using System.Linq;
 using Unity.AI.Navigation;
 using UnityEngine.AI;
 using Debug = UnityEngine.Debug;
+using Random = System.Random;
 
 namespace Dungeon
 {
@@ -17,10 +18,12 @@ namespace Dungeon
         public int maxIterations;
         public int corridorWidth;
         public int dungeonHeight;
+        public int torchFrequencyInPercent = 20;
         public Material floorMaterial;
         public Material roofMaterial;
         public Material startRoomMaterial;
         public Material endRoomMaterial;
+        public Material wallMaterial;
 
         [Range(0.0f, 0.3f)]
         public float roomBottomCornerModifier;
@@ -28,20 +31,24 @@ namespace Dungeon
         public float roomTopCornerModifier;
         [Range(0.0f, 2.0f)]
         public int roomOffset;
-        public GameObject wallVertical, wallHorizontal;
-        
-        public GameObject playerPrefab;
 
-        private List<Vector3Int> _possibleDoorVerticalPositions;
-        private List<Vector3Int> _possibleDoorHorizontalPositions;
+        public GameObject playerPrefab;
+        public GameObject torchPrefab;
+        public GameObject doorPrefab;
+        
         private List<Vector3Int> _possibleWallHorizontalPositions;
         private List<Vector3Int> _possibleWallVerticalPositions;
+        private List<Vector3Int> _possibleTorchHorizontalPosition;
+        private List<Vector3Int> _possibleTorchVerticalPosition;
 
         private readonly List<GameObject> _dungeonFloors = new();
 
         private List<Vector3> _vertices;
         private int[] _triangles;
         private Vector2[] _uvCoordinates;
+
+        // To visualize points
+        private List<Vector3> _testList = new List<Vector3>();
 
         // Unity Methods
         private void Start()
@@ -74,11 +81,11 @@ namespace Dungeon
                 corridorWidth
             );
             
-            _possibleDoorVerticalPositions = new List<Vector3Int>();
-            _possibleDoorHorizontalPositions = new List<Vector3Int>(); 
             _possibleWallHorizontalPositions = new List<Vector3Int>();
             _possibleWallVerticalPositions = new List<Vector3Int>();
-
+            _possibleTorchHorizontalPosition = new List<Vector3Int>();
+            _possibleTorchVerticalPosition = new List<Vector3Int>();
+            
             RoomNode startRoom = (RoomNode) listOfRooms[0];
             GameObject endRoom = null;
             float maxDistance = 0f;
@@ -134,8 +141,6 @@ namespace Dungeon
                 endRoom.GetComponent<MeshRenderer>().material = endRoomMaterial;    
             }
 
-            //CreateWalls(wallParent);
-
             // Create the roof
             foreach (var (room, index) in listOfRooms.Select((room, index) => ( room, index )))
             {
@@ -156,9 +161,54 @@ namespace Dungeon
             foreach (var room in listOfRooms)
             {
                 CreateWalls(room);
+
+                if (room.IsCorridor)
+                {
+                    PlaceDoors(room);
+                }
             }
 
             SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
+        }
+
+        private void PlaceTorch(Vector3Int torchPosition)
+        {
+            torchPosition.y = dungeonHeight - 1;
+            
+            Instantiate(torchPrefab, torchPosition, Quaternion.identity);
+        }
+
+        private void PlaceDoors(Node room)
+        {
+            Vector3 positionFirstDoor;
+            Vector3 positionSecondDor;
+            bool isHorizontalDoor = false;
+            
+            if (!room.IsHorizontalCorridor)
+            {
+                int bottomLengthHalf = Math.Abs(room.BottomRightAreaCorner.x - room.BottomLeftAreaCorner.x) / 2;
+                int topLengthHalf = Math.Abs(room.TopRightAreaCorner.x - room.TopLeftAreaCorner.x) / 2;
+                positionFirstDoor = new Vector3(room.BottomLeftAreaCorner.x + bottomLengthHalf, 0, room.BottomLeftAreaCorner.y);
+                positionSecondDor = new Vector3(room.TopLeftAreaCorner.x + topLengthHalf, 0, room.TopLeftAreaCorner.y);
+            }
+            else
+            {
+                int leftLengthHalf = Math.Abs(room.TopLeftAreaCorner.y - room.BottomLeftAreaCorner.y) / 2;
+                int rightLengthHalf = Math.Abs(room.TopRightAreaCorner.y - room.BottomRightAreaCorner.y) / 2;
+                positionFirstDoor = new Vector3(room.BottomLeftAreaCorner.x, 0, room.BottomLeftAreaCorner.y + leftLengthHalf);
+                positionSecondDor = new Vector3(room.BottomRightAreaCorner.x, 0, room.BottomRightAreaCorner.y  + rightLengthHalf);
+                isHorizontalDoor = true;
+            }
+            
+            var door1 = Instantiate(doorPrefab, positionFirstDoor, Quaternion.identity);
+            var door2 = Instantiate(doorPrefab, positionSecondDor, Quaternion.identity);
+
+            if (isHorizontalDoor)
+            {
+                var ninetyDegreesRotation = new Vector3(0, 90, 0);
+                door1.transform.Rotate(ninetyDegreesRotation);
+                door2.transform.Rotate(ninetyDegreesRotation);
+            }
         }
 
         private void CreateWalls(Node room)
@@ -261,7 +311,7 @@ namespace Dungeon
             Vector2[] uvCoordinates = new Vector2[vertices.Count];
             for (int i = 0, y = 0; y <= dungeonHeight; y++)
             {
-                for (int x = 0; x <= length; x++)
+                for (var x = 0; x <= length; x++)
                 {
                     uvCoordinates[i] = new Vector2(x, y);
                     i++;
@@ -288,7 +338,7 @@ namespace Dungeon
             };
             
             wall.GetComponent<MeshFilter>().mesh = mesh;
-            wall.GetComponent<MeshRenderer>().material = floorMaterial;
+            wall.GetComponent<MeshRenderer>().material = wallMaterial;
             wall.layer = Layer.WallLayer;
             wall.isStatic = true;
         }
@@ -321,38 +371,6 @@ namespace Dungeon
         }
 
         /// <summary>
-        /// This method creates the walls of the dungeons.
-        /// </summary>
-        /// <param name="wallParent">Is the parent game object for all the walls</param>
-        private void CreateWalls(GameObject wallParent)
-        {
-            foreach (var wallPosition in _possibleWallHorizontalPositions)
-            {
-                CreateWall(wallParent, wallPosition, wallHorizontal);
-            }
-
-            foreach (var wallPosition in _possibleWallVerticalPositions)
-            {
-                CreateWall(wallParent, wallPosition, wallVertical);
-            }
-        }
-
-        /// <summary>
-        /// This method creates a new wall game object
-        /// </summary>
-        /// <param name="wallParent">Is the parent game object of the wall that will be created</param>
-        /// <param name="wallPosition">Contains the position where the wall will be created</param>
-        /// <param name="wallPrefab">Is the prefab for the wall object</param>
-        private void CreateWall(GameObject wallParent, Vector3Int wallPosition, GameObject wallPrefab)
-        {
-            GameObject wall = Instantiate(wallPrefab, wallPosition, Quaternion.identity, wallParent.transform);
-            
-            wall.transform.localScale = new Vector3(1, dungeonHeight, 1);
-            
-            wall.layer = Layer.WallLayer;
-        }
-
-        /// <summary>
         /// This method creates the mesh for the floor and the roof
         /// </summary>
         /// <param name="bottomLeftCorner">Contains the bottom left corner of the mesh</param>
@@ -361,6 +379,7 @@ namespace Dungeon
         /// <param name="height">Is the height of the generated mesh. It is necessary to use the same method
         /// for the floor and the roof</param>
         /// <param name="isFloor">Is a switch variable to change the creation of the triangles</param>
+        /// <param name="index">Contains the index of the current wall</param>
         /// <returns></returns>
         private GameObject CreateFloorMesh(Vector2 bottomLeftCorner, Vector2 topRightCorner, Material material, 
             int height, bool isFloor, int index)
@@ -426,53 +445,92 @@ namespace Dungeon
             dungeonFloor.layer = Layer.GroundLayer;
             dungeonFloor.isStatic = true;
 
+            bool isGettingTorch = false;
+            
             for (int row = (int) bottomLeftV.x; row < (int) bottomRightV.x; row++)
             {
                 var wallPosition = new Vector3(row, 0, bottomLeftV.z);
-                AddWallPositionToList(wallPosition, _possibleWallHorizontalPositions, _possibleDoorHorizontalPositions);
+                isGettingTorch = GenerateRandomBoolean();
+                AddWallPositionToList(wallPosition, _possibleWallHorizontalPositions, _possibleTorchHorizontalPosition, isGettingTorch);
             }
 
             for (int row = (int) topLeftV.x; row < (int) topRightCorner.x; row++)
             {
                 var wallPosition = new Vector3(row, 0, topRightV.z);
-                AddWallPositionToList(wallPosition, _possibleWallHorizontalPositions, _possibleDoorHorizontalPositions);
+                isGettingTorch = GenerateRandomBoolean();
+                AddWallPositionToList(wallPosition, _possibleWallHorizontalPositions, _possibleTorchHorizontalPosition, isGettingTorch);
             }
 
             for (int col = (int) bottomLeftV.z; col < (int) topLeftV.z; col++)
             {
                 var wallPosition = new Vector3(bottomLeftV.x, 0, col);
-                AddWallPositionToList(wallPosition, _possibleWallVerticalPositions, _possibleDoorVerticalPositions);
+                isGettingTorch = GenerateRandomBoolean();
+                AddWallPositionToList(wallPosition, _possibleWallVerticalPositions, _possibleTorchVerticalPosition, isGettingTorch);
             }
             
             for (int col = (int) bottomRightV.z; col < (int) topRightV.z; col++)
             {
                 var wallPosition = new Vector3(bottomRightV.x, 0, col);
-                AddWallPositionToList(wallPosition, _possibleWallVerticalPositions, _possibleDoorVerticalPositions);
+                isGettingTorch = GenerateRandomBoolean();
+                AddWallPositionToList(wallPosition, _possibleWallVerticalPositions, _possibleTorchVerticalPosition, isGettingTorch);
             }
 
             return dungeonFloor;
         }
 
         /// <summary>
-        /// This method searches the positions for the walls and adds them to a the wallList
+        /// This method searches the positions for the walls and adds them to the wallList
         /// </summary>
         /// <param name="wallPosition">Contains the position for the wall</param>
         /// <param name="wallList">Is the list where the wall positions will be added</param>
-        /// <param name="doorList">Contains the positions of the doors for the corridors</param>
-        private void AddWallPositionToList(Vector3 wallPosition, List<Vector3Int> wallList, List<Vector3Int> doorList)
+        /// <param name="torchList">Contains the positions of the torches</param>
+        private void AddWallPositionToList(Vector3 wallPosition, List<Vector3Int> wallList, List<Vector3Int> torchList, bool isWallGettingTorch)
         {
             Vector3Int point = Vector3Int.CeilToInt(new Vector3(wallPosition.x, 0, wallPosition.z));
 
             if (wallList.Contains(point))
             {
-                doorList.Add(point);
                 wallList.Remove(point);
             }
             else
             {
                 wallList.Add(point);
+
+                if (isWallGettingTorch)
+                {
+                    torchList.Add(point);
+                }
+            }
+        }
+
+        private bool GenerateRandomBoolean()
+        {
+            Random random = new Random();
+            if(random.Next(100) < torchFrequencyInPercent)
+            {
+                return true;
+            }
+
+            return false;
+        }
+        
+        // For developing purpose to see if the points are on the correct position
+        private void OnDrawGizmos()
+        {
+            if (_possibleTorchHorizontalPosition == null) return;
+            if (_possibleTorchVerticalPosition == null) return;
+
+            Gizmos.color = Color.black;
+
+            foreach (var point in _possibleTorchHorizontalPosition)
+            {
+                Gizmos.DrawSphere(point, 0.1f);
+            }
+            
+            foreach (var point in _possibleTorchVerticalPosition)
+            {
+                Gizmos.DrawSphere(point, 0.1f);
             }
         }
     }    
 }
-
