@@ -1,29 +1,31 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using Dungeon;
 
-public class CorridorsGenerator
+namespace Dungeon
 {
-    public List<Node> CreateCorridors(List<RoomNode> allNodes, int corridorWidth)
+    public class CorridorsGenerator
     {
-        List<Node> corridorList = new List<Node>();
-        Queue<RoomNode> structuresToCheck = new Queue<RoomNode>(
-            allNodes.OrderByDescending(node => node.TreeLayerIndex)
-        );
-
-        while (structuresToCheck.Count > 0)
+        public List<Node> CreateCorridors(List<RoomNode> allNodes, int corridorWidth)
         {
-            var node = structuresToCheck.Dequeue();
+            List<Node> corridorList = new List<Node>();
+            Queue<RoomNode> structuresToCheck = new Queue<RoomNode>(
+                allNodes.OrderByDescending(node => node.TreeLayerIndex)
+            );
 
-            if (node.ChildrenNodes.Count == 0)
+            while (structuresToCheck.Count > 0)
             {
-                continue;
-            }
+                var node = structuresToCheck.Dequeue();
 
-            CorridorNode corridor = new CorridorNode(node.ChildrenNodes[0], node.ChildrenNodes[1], corridorWidth);
-            corridorList.Add(corridor);
-        }
+                if (node.ChildrenNodes.Count == 0)
+                {
+                    continue;
+                }
+
+                CorridorNode corridor = new CorridorNode(node.ChildrenNodes[0], node.ChildrenNodes[1], corridorWidth);
+                corridorList.Add(corridor);
+            }
         
-        return corridorList;
+            return corridorList;
+        }
     }
 }

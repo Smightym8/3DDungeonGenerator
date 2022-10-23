@@ -1,87 +1,87 @@
-﻿
-using System.Collections.Generic;
-using Dungeon;
+﻿using System.Collections.Generic;
 using UnityEngine;
-using Random = UnityEngine.Random;
 
-public static class StructureHelper
+namespace Dungeon
 {
-    public static List<Node> TraverseGraphToExtractLowestLeaves(Node parentNode)
+    public static class StructureHelper
     {
-        Queue<Node> nodesToCheck = new Queue<Node>();
-        List<Node> listToReturn = new List<Node>();
-
-        if (parentNode.ChildrenNodes.Count == 0)
+        public static List<Node> TraverseGraphToExtractLowestLeaves(Node parentNode)
         {
-            return new List<Node> { parentNode };
-        }
+            Queue<Node> nodesToCheck = new Queue<Node>();
+            List<Node> listToReturn = new List<Node>();
 
-        foreach (var childNode in parentNode.ChildrenNodes)
-        {
-            nodesToCheck.Enqueue(childNode);
-        }
-
-        while (nodesToCheck.Count > 0)
-        {
-            var currentNode = nodesToCheck.Dequeue();
-
-            if (currentNode.ChildrenNodes.Count == 0)
+            if (parentNode.ChildrenNodes.Count == 0)
             {
-                listToReturn.Add(currentNode);
+                return new List<Node> { parentNode };
             }
-            else
+
+            foreach (var childNode in parentNode.ChildrenNodes)
             {
-                foreach (var child in currentNode.ChildrenNodes)
+                nodesToCheck.Enqueue(childNode);
+            }
+
+            while (nodesToCheck.Count > 0)
+            {
+                var currentNode = nodesToCheck.Dequeue();
+
+                if (currentNode.ChildrenNodes.Count == 0)
                 {
-                    nodesToCheck.Enqueue(child);
+                    listToReturn.Add(currentNode);
+                }
+                else
+                {
+                    foreach (var child in currentNode.ChildrenNodes)
+                    {
+                        nodesToCheck.Enqueue(child);
+                    }
                 }
             }
+        
+            return listToReturn;
         }
-        
-        return listToReturn;
-    }
 
-    public static Vector2Int GenerateBottomLeftCornerBetween(
-        Vector2Int boundaryLeftPoint, Vector2Int boundaryRightPoint, float pointModifier, int offset)
-    {
-        int minX = boundaryLeftPoint.x + offset;
-        int maxX = boundaryRightPoint.x - offset;
-        int minY = boundaryLeftPoint.y + offset;
-        int maxY = boundaryRightPoint.y - offset;
+        public static Vector2Int GenerateBottomLeftCornerBetween(
+            Vector2Int boundaryLeftPoint, Vector2Int boundaryRightPoint, float pointModifier, int offset)
+        {
+            int minX = boundaryLeftPoint.x + offset;
+            int maxX = boundaryRightPoint.x - offset;
+            int minY = boundaryLeftPoint.y + offset;
+            int maxY = boundaryRightPoint.y - offset;
         
-        return new Vector2Int(
-            Random.Range(minX, (int)(minX + (maxX - minX) * pointModifier)),
-            Random.Range(minY, (int)(minY + (maxY - minY) * pointModifier))
-        );
-    }
+            return new Vector2Int(
+                Random.Range(minX, (int)(minX + (maxX - minX) * pointModifier)),
+                Random.Range(minY, (int)(minY + (maxY - minY) * pointModifier))
+            );
+        }
     
-    public static Vector2Int GenerateTopRightCornerBetween(
-        Vector2Int boundaryLeftPoint, Vector2Int boundaryRightPoint, float pointModifier, int offset)
-    {
-        int minX = boundaryLeftPoint.x + offset;
-        int maxX = boundaryRightPoint.x - offset;
-        int minY = boundaryLeftPoint.y + offset;
-        int maxY = boundaryRightPoint.y - offset;
+        public static Vector2Int GenerateTopRightCornerBetween(
+            Vector2Int boundaryLeftPoint, Vector2Int boundaryRightPoint, float pointModifier, int offset)
+        {
+            int minX = boundaryLeftPoint.x + offset;
+            int maxX = boundaryRightPoint.x - offset;
+            int minY = boundaryLeftPoint.y + offset;
+            int maxY = boundaryRightPoint.y - offset;
         
-        return new Vector2Int(
-            Random.Range((int)(minX + (maxX - minX) * pointModifier), maxX),
-            Random.Range((int)(minY + (maxY - minY) * pointModifier), maxY)
-        );
+            return new Vector2Int(
+                Random.Range((int)(minX + (maxX - minX) * pointModifier), maxX),
+                Random.Range((int)(minY + (maxY - minY) * pointModifier), maxY)
+            );
+        }
+
+        public static Vector2Int CalculateMiddlePoint(Vector2Int v1, Vector2Int v2)
+        {
+            Vector2 sum = v1 + v2;
+            Vector2 tempVector = sum / 2;
+
+            return new Vector2Int((int) tempVector.x, (int)tempVector.y);
+        }
     }
 
-    public static Vector2Int CalculateMiddlePoint(Vector2Int v1, Vector2Int v2)
+    public enum RelativePosition
     {
-        Vector2 sum = v1 + v2;
-        Vector2 tempVector = sum / 2;
-
-        return new Vector2Int((int) tempVector.x, (int)tempVector.y);
+        Up,
+        Down,
+        Right,
+        Left
     }
-}
-
-public enum RelativePosition
-{
-    Up,
-    Down,
-    Right,
-    Left
 }

@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Diagnostics;
 using System.Linq;
-using Unity.AI.Navigation;
-using UnityEngine.AI;
+using Unity.VisualScripting;
 using Debug = UnityEngine.Debug;
-using Random = System.Random;
+using Random = UnityEngine.Random;
 
+// TODO: Combine meshes
 namespace Dungeon
 {
     public class DungeonCreator : MonoBehaviour
@@ -18,12 +18,12 @@ namespace Dungeon
         public int maxIterations;
         public int corridorWidth;
         public int dungeonHeight;
-        public int torchFrequencyInPercent = 20;
         public Material floorMaterial;
         public Material roofMaterial;
         public Material startRoomMaterial;
         public Material endRoomMaterial;
         public Material wallMaterial;
+        public Color lightColor = Color.yellow;
 
         [Range(0.0f, 0.3f)]
         public float roomBottomCornerModifier;
@@ -35,9 +35,8 @@ namespace Dungeon
         public GameObject playerPrefab;
         public GameObject torchPrefab;
         public GameObject doorPrefab;
-        
-        private List<Vector3Int> _possibleWallHorizontalPositions;
-        private List<Vector3Int> _possibleWallVerticalPositions;
+        public List<GameObject> sceneryPrefabs;
+
         private List<Vector3Int> _possibleTorchHorizontalPosition;
         private List<Vector3Int> _possibleTorchVerticalPosition;
         private List<Vector3> _doorPositions;
@@ -81,9 +80,6 @@ namespace Dungeon
                 corridorWidth
             );
             
-            
-            _possibleWallHorizontalPositions = new List<Vector3Int>();
-            _possibleWallVerticalPositions = new List<Vector3Int>();
             _possibleTorchHorizontalPosition = new List<Vector3Int>();
             _possibleTorchVerticalPosition = new List<Vector3Int>();
             _doorPositions = new List<Vector3>();
@@ -187,26 +183,47 @@ namespace Dungeon
             int j = 0;
             foreach (var position in _possibleTorchHorizontalPosition)
             {
-                PlaceTorch(position, _torchHorizontalRotations[j]);
+                PlaceLight(position, _torchHorizontalRotations[j]);
                 j++;
             }
 
             j = 0;
             foreach (var position in _possibleTorchVerticalPosition)
             {
-                PlaceTorch(position, _torchVerticalRotations[j]);
+                PlaceLight(position, _torchVerticalRotations[j]);
                 j++;
             }
 
+            // Add random scenery to rooms
+            for (int i = 0; i < listOfRooms.Count / 2; i++)
+            {
+                PlaceRandomScenery(listOfRooms[i]);
+            }
+            
             SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
         }
 
-        private void PlaceTorch(Vector3Int torchPosition, int rotation)
+        private void PlaceRandomScenery(Node room)
         {
-            torchPosition.y = dungeonHeight - 1;
+            int randomSceneryIndex = Random.Range(0, sceneryPrefabs.Count);
+            int randomX = Random.Range(room.BottomLeftAreaCorner.x + 1, room.BottomRightAreaCorner.x - 1);
+            int randomZ = Random.Range(room.BottomLeftAreaCorner.y + 1, room.TopLeftAreaCorner.y - 1);
+            var position = new Vector3(randomX, 0, randomZ);
 
-            var torch = Instantiate(torchPrefab, torchPosition, Quaternion.identity);
-            torch.transform.Rotate(new Vector3(0, rotation, 0));
+            Instantiate(sceneryPrefabs[randomSceneryIndex], position, Quaternion.identity);
+        }
+
+        private void PlaceLight(Vector3Int lightPosition, int rotation)
+        {
+            lightPosition.y = dungeonHeight - 1;
+
+            var lightGameObject = Instantiate(torchPrefab, lightPosition, Quaternion.identity);
+            lightGameObject.transform.Rotate(new Vector3(0, rotation, 0));
+            Light lightSource = lightGameObject.AddComponent<Light>();
+            lightSource.type = LightType.Point;
+            lightSource.intensity = 3;
+            lightSource.range = 3;
+            lightSource.color = lightColor;
         }
 
         private void PlaceDoors(Node room)
@@ -372,6 +389,7 @@ namespace Dungeon
             
             wall.GetComponent<MeshFilter>().mesh = mesh;
             wall.GetComponent<MeshRenderer>().material = wallMaterial;
+            // TODO: Add collider
             wall.layer = Layer.WallLayer;
             wall.isStatic = true;
         }
