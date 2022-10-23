@@ -40,15 +40,15 @@ namespace Dungeon
         private List<Vector3Int> _possibleWallVerticalPositions;
         private List<Vector3Int> _possibleTorchHorizontalPosition;
         private List<Vector3Int> _possibleTorchVerticalPosition;
+        private List<Vector3> _doorPositions;
+        private List<int> _torchHorizontalRotations;
+        private List<int> _torchVerticalRotations;
 
         private readonly List<GameObject> _dungeonFloors = new();
 
         private List<Vector3> _vertices;
         private int[] _triangles;
         private Vector2[] _uvCoordinates;
-
-        // To visualize points
-        private List<Vector3> _testList = new List<Vector3>();
 
         // Unity Methods
         private void Start()
@@ -81,10 +81,14 @@ namespace Dungeon
                 corridorWidth
             );
             
+            
             _possibleWallHorizontalPositions = new List<Vector3Int>();
             _possibleWallVerticalPositions = new List<Vector3Int>();
             _possibleTorchHorizontalPosition = new List<Vector3Int>();
             _possibleTorchVerticalPosition = new List<Vector3Int>();
+            _doorPositions = new List<Vector3>();
+            _torchHorizontalRotations = new List<int>();
+            _torchVerticalRotations = new List<int>();
             
             RoomNode startRoom = (RoomNode) listOfRooms[0];
             GameObject endRoom = null;
@@ -161,21 +165,48 @@ namespace Dungeon
             foreach (var room in listOfRooms)
             {
                 CreateWalls(room);
-
+                
                 if (room.IsCorridor)
                 {
                     PlaceDoors(room);
                 }
             }
 
+            // Collect torch positions in rooms
+            for (int i = 0; i < (listOfRooms.Count / 2); i++)
+            {
+                CollectTorchPositionsInRooms(listOfRooms[i].BottomLeftAreaCorner,listOfRooms[i].TopRightAreaCorner);
+            }
+            
+            for (int i = (listOfRooms.Count / 2 + 1); i < listOfRooms.Count; i++)
+            {
+                CollectTorchPositionsInCorridors(listOfRooms[i].BottomLeftAreaCorner,
+                    listOfRooms[i].TopRightAreaCorner, listOfRooms[i].IsHorizontalCorridor);
+            }
+
+            int j = 0;
+            foreach (var position in _possibleTorchHorizontalPosition)
+            {
+                PlaceTorch(position, _torchHorizontalRotations[j]);
+                j++;
+            }
+
+            j = 0;
+            foreach (var position in _possibleTorchVerticalPosition)
+            {
+                PlaceTorch(position, _torchVerticalRotations[j]);
+                j++;
+            }
+
             SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
         }
 
-        private void PlaceTorch(Vector3Int torchPosition)
+        private void PlaceTorch(Vector3Int torchPosition, int rotation)
         {
             torchPosition.y = dungeonHeight - 1;
-            
-            Instantiate(torchPrefab, torchPosition, Quaternion.identity);
+
+            var torch = Instantiate(torchPrefab, torchPosition, Quaternion.identity);
+            torch.transform.Rotate(new Vector3(0, rotation, 0));
         }
 
         private void PlaceDoors(Node room)
@@ -200,6 +231,8 @@ namespace Dungeon
                 isHorizontalDoor = true;
             }
             
+            _doorPositions.Add(positionFirstDoor);
+            _doorPositions.Add(positionSecondDor);
             var door1 = Instantiate(doorPrefab, positionFirstDoor, Quaternion.identity);
             var door2 = Instantiate(doorPrefab, positionSecondDor, Quaternion.identity);
 
@@ -444,82 +477,126 @@ namespace Dungeon
             dungeonFloor.gameObject.AddComponent<BoxCollider>();
             dungeonFloor.layer = Layer.GroundLayer;
             dungeonFloor.isStatic = true;
-
-            bool isGettingTorch = false;
             
-            for (int row = (int) bottomLeftV.x; row < (int) bottomRightV.x; row++)
+            return dungeonFloor;
+        }
+
+        private void CollectTorchPositionsInCorridors(Vector2 bottomLeftCorner, Vector2 topRightCorner, bool isHorizontal)
+        {
+            Vector3 bottomLeftV = new Vector3(bottomLeftCorner.x, 0, bottomLeftCorner.y);
+            Vector3 bottomRightV = new Vector3(topRightCorner.x, 0, bottomLeftCorner.y);
+            Vector3 topLeftV = new Vector3(bottomLeftCorner.x, 0, topRightCorner.y);
+            Vector3 topRightV = new Vector3(topRightCorner.x, 0, topRightCorner.y);
+
+            int index = 0;
+            // Start at +1 and go to -1 from the corners so the torches are not placed in the corners
+            if (isHorizontal)
+            {
+                for (int row = (int) bottomLeftV.x + 1; row < (int) bottomRightV.x - 1; row++)
+                {
+                    var position = new Vector3(row, 0, bottomLeftV.z);
+                    AddTorchPositionToList(position, _possibleTorchHorizontalPosition, _torchHorizontalRotations, true, index, 0);
+                    index++;
+                }
+                
+                index = 0;
+                for (int row = (int) topLeftV.x + 1; row < (int) topRightCorner.x - 1; row++)
+                {
+                    var position = new Vector3(row, 0, topRightV.z);
+                    AddTorchPositionToList(position, _possibleTorchHorizontalPosition, _torchHorizontalRotations, true, index, 180);
+                    index++;
+                }
+            }
+            else
+            {
+                for (int col = (int) bottomLeftV.z + 1; col < (int) topLeftV.z - 1; col++)
+                {
+                    var position = new Vector3(bottomLeftV.x, 0, col);
+                    AddTorchPositionToList(position, _possibleTorchVerticalPosition, _torchVerticalRotations, true, index, 90);
+                    index++;
+                }
+            
+                index = 0;
+                for (int col = (int) bottomRightV.z + 1; col < (int) topRightV.z - 1; col++)
+                {
+                    var position = new Vector3(bottomRightV.x, 0, col);
+                    AddTorchPositionToList(position, _possibleTorchVerticalPosition, _torchVerticalRotations, true, index, -90);
+                    index++;
+                }
+            }
+        }
+        
+        private void CollectTorchPositionsInRooms(Vector2 bottomLeftCorner, Vector2 topRightCorner)
+        {
+            Vector3 bottomLeftV = new Vector3(bottomLeftCorner.x, 0, bottomLeftCorner.y);
+            Vector3 bottomRightV = new Vector3(topRightCorner.x, 0, bottomLeftCorner.y);
+            Vector3 topLeftV = new Vector3(bottomLeftCorner.x, 0, topRightCorner.y);
+            Vector3 topRightV = new Vector3(topRightCorner.x, 0, topRightCorner.y);
+            
+            var index = 0;
+            for (int row = (int) bottomLeftV.x + 1; row < (int) bottomRightV.x - 1; row++)
             {
                 var wallPosition = new Vector3(row, 0, bottomLeftV.z);
-                isGettingTorch = GenerateRandomBoolean();
-                AddWallPositionToList(wallPosition, _possibleWallHorizontalPositions, _possibleTorchHorizontalPosition, isGettingTorch);
+                AddTorchPositionToList(wallPosition, _possibleTorchHorizontalPosition, _torchHorizontalRotations, false, index, 0);
+                index++;
             }
 
-            for (int row = (int) topLeftV.x; row < (int) topRightCorner.x; row++)
+            index = 0;
+            for (int row = (int) topLeftV.x + 1; row < (int) topRightCorner.x - 1; row++)
             {
                 var wallPosition = new Vector3(row, 0, topRightV.z);
-                isGettingTorch = GenerateRandomBoolean();
-                AddWallPositionToList(wallPosition, _possibleWallHorizontalPositions, _possibleTorchHorizontalPosition, isGettingTorch);
+                AddTorchPositionToList(wallPosition, _possibleTorchHorizontalPosition, _torchHorizontalRotations, false, index, 180);
+                index++;
             }
 
-            for (int col = (int) bottomLeftV.z; col < (int) topLeftV.z; col++)
+            index = 0;
+            for (int col = (int) bottomLeftV.z + 1; col < (int) topLeftV.z - 1; col++)
             {
                 var wallPosition = new Vector3(bottomLeftV.x, 0, col);
-                isGettingTorch = GenerateRandomBoolean();
-                AddWallPositionToList(wallPosition, _possibleWallVerticalPositions, _possibleTorchVerticalPosition, isGettingTorch);
-            }
-            
-            for (int col = (int) bottomRightV.z; col < (int) topRightV.z; col++)
-            {
-                var wallPosition = new Vector3(bottomRightV.x, 0, col);
-                isGettingTorch = GenerateRandomBoolean();
-                AddWallPositionToList(wallPosition, _possibleWallVerticalPositions, _possibleTorchVerticalPosition, isGettingTorch);
+                AddTorchPositionToList(wallPosition, _possibleTorchVerticalPosition, _torchVerticalRotations, false, index, 90);
+                index++;
             }
 
-            return dungeonFloor;
+            index = 0;
+            for (int col = (int) bottomRightV.z + 1; col < (int) topRightV.z - 1; col++)
+            {
+                var wallPosition = new Vector3(bottomRightV.x, 0, col);
+                AddTorchPositionToList(wallPosition, _possibleTorchVerticalPosition, _torchVerticalRotations, false, index, -90);
+                index++;
+            }
         }
 
         /// <summary>
         /// This method searches the positions for the walls and adds them to the wallList
         /// </summary>
-        /// <param name="wallPosition">Contains the position for the wall</param>
+        /// <param name="position">Contains the position for the wall</param>
         /// <param name="wallList">Is the list where the wall positions will be added</param>
+        /// <param name="doorList"></param>
         /// <param name="torchList">Contains the positions of the torches</param>
-        private void AddWallPositionToList(Vector3 wallPosition, List<Vector3Int> wallList, List<Vector3Int> torchList, bool isWallGettingTorch)
+        /// <param name="isWallGettingTorch"></param>
+        private void AddTorchPositionToList(Vector3 position, List<Vector3Int> torchList, List<int> torchRotationList, bool isCorridor, int index, int rotation)
         {
-            Vector3Int point = Vector3Int.CeilToInt(new Vector3(wallPosition.x, 0, wallPosition.z));
+            Vector3Int point = Vector3Int.CeilToInt(position);
 
-            if (wallList.Contains(point))
+            if (isCorridor && index % 2 == 0)
             {
-                wallList.Remove(point);
+                torchList.Add(point);
+                torchRotationList.Add(rotation);
             }
-            else
+            else if (!_doorPositions.Contains(point) && index % 6 == 0)
             {
-                wallList.Add(point);
-
-                if (isWallGettingTorch)
-                {
-                    torchList.Add(point);
-                }
+                torchList.Add(point);   
+                torchRotationList.Add(rotation);
             }
         }
 
-        private bool GenerateRandomBoolean()
-        {
-            Random random = new Random();
-            if(random.Next(100) < torchFrequencyInPercent)
-            {
-                return true;
-            }
-
-            return false;
-        }
-        
         // For developing purpose to see if the points are on the correct position
+        /*
         private void OnDrawGizmos()
         {
             if (_possibleTorchHorizontalPosition == null) return;
             if (_possibleTorchVerticalPosition == null) return;
-
+            
             Gizmos.color = Color.black;
 
             foreach (var point in _possibleTorchHorizontalPosition)
@@ -532,5 +609,6 @@ namespace Dungeon
                 Gizmos.DrawSphere(point, 0.1f);
             }
         }
+        */
     }    
 }
