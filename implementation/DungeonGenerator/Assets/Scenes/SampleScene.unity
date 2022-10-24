@@ -324,7 +324,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 279191908}
-  m_LocalRotation: {x: 0.20625491, y: 0.000000032603573, z: -0.0000000068724155, w: 0.9784983}
+  m_LocalRotation: {x: 0.20625494, y: 9.92251e-16, z: -2.8452548e-17, w: 0.9784983}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -383,7 +383,6 @@ MonoBehaviour:
   roomOffset: 1
   playerPrefab: {fileID: 1968490571}
   torchPrefab: {fileID: 8060405944448375545, guid: 7970c12d6b19a504fbc82353b8a43abe, type: 3}
-  doorPrefab: {fileID: 416386656469751746, guid: 9175d08a6bdddeb48afa15d1b714d918, type: 3}
   sceneryPrefabs:
   - {fileID: 1907257163547374, guid: 18b741bae3494f042a738e61532bd5d6, type: 3}
 --- !u!4 &507846948
@@ -716,7 +715,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
-  m_LocalRotation: {x: 0.18842244, y: -0.000000032723197, z: 0.000000006278239, w: 0.9820881}
+  m_LocalRotation: {x: 0.18842244, y: 0.000000032723197, z: -0.000000006278239, w: 0.9820881}
   m_LocalPosition: {x: 0, y: 3, z: -4.9100003}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -954,7 +953,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1477826468}
-  m_LocalRotation: {x: 0.17057492, y: -0, z: -0, w: 0.98534477}
+  m_LocalRotation: {x: 0.17057492, y: -1e-45, z: -0, w: 0.98534477}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -1032,7 +1031,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1624330194}
-  m_LocalRotation: {x: 0.18842243, y: -1e-45, z: -0, w: 0.9820881}
+  m_LocalRotation: {x: 0.18842243, y: 1e-45, z: -0, w: 0.9820881}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0

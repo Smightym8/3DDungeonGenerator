@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Diagnostics;
 using System.Linq;
-using Unity.VisualScripting;
 using Debug = UnityEngine.Debug;
 using Random = UnityEngine.Random;
 
@@ -34,21 +33,15 @@ namespace Dungeon
 
         public GameObject playerPrefab;
         public GameObject torchPrefab;
-        public GameObject doorPrefab;
         public List<GameObject> sceneryPrefabs;
 
-        private List<Vector3Int> _possibleLightHorizontalPosition;
-        private List<Vector3Int> _possibleLightVerticalPosition;
-        private List<Vector3> _doorPositions;
-        private List<int> _lightHorizontalRotations;
-        private List<int> _lightVerticalRotations;
+        private Dictionary<Vector3Int, int> _lightPositions;
+        private List<Vector3Int> _ignoreLightPositions;
 
         private readonly List<GameObject> _dungeonFloors = new();
         
         private int[] _triangles;
         private Vector2[] _uvCoordinates;
-
-        private List<Vector3> _testList;
 
         // Unity Methods
         private void Start()
@@ -68,8 +61,6 @@ namespace Dungeon
         /// </summary>
         private void CreateDungeon()
         {
-            _testList = new List<Vector3>();
-            
             DungeonGenerator generator = new DungeonGenerator(dungeonWidth, dungeonLength);
             var listOfRooms = generator.CalculateDungeon(
                 maxIterations, 
@@ -82,13 +73,10 @@ namespace Dungeon
                 roomOffset,
                 corridorWidth
             );
-            
-            _possibleLightHorizontalPosition = new List<Vector3Int>();
-            _possibleLightVerticalPosition = new List<Vector3Int>();
-            _doorPositions = new List<Vector3>();
-            _lightHorizontalRotations = new List<int>();
-            _lightVerticalRotations = new List<int>();
-            
+
+            _lightPositions = new Dictionary<Vector3Int, int>();
+            _ignoreLightPositions = new List<Vector3Int>();
+
             RoomNode startRoom = (RoomNode) listOfRooms[0];
             GameObject endRoom = null;
             float maxDistance = 0f;
@@ -162,34 +150,12 @@ namespace Dungeon
             foreach (var room in listOfRooms)
             {
                 CreateWalls(room, listOfRooms);
-            }
-
-            // Collect torch positions in rooms
-            for (int i = 0; i < (listOfRooms.Count / 2); i++)
-            {
-                CollectTorchPositionsInRooms(listOfRooms[i].BottomLeftAreaCorner,listOfRooms[i].TopRightAreaCorner);
+                CollectLightPositions(room);
             }
             
-            for (int i = (listOfRooms.Count / 2 + 1); i < listOfRooms.Count; i++)
+            foreach (var (position, rotation) in _lightPositions)
             {
-                CollectTorchPositionsInCorridors(listOfRooms[i].BottomLeftAreaCorner,
-                    listOfRooms[i].TopRightAreaCorner, listOfRooms[i].IsHorizontalCorridor);
-                
-                //_testList.Add(new Vector3(listOfRooms[i].BottomLeftAreaCorner.x, 0, listOfRooms[i].BottomLeftAreaCorner.y));
-            }
-
-            int j = 0;
-            foreach (var position in _possibleLightHorizontalPosition)
-            {
-                PlaceLight(position, _lightHorizontalRotations[j]);
-                j++;
-            }
-
-            j = 0;
-            foreach (var position in _possibleLightVerticalPosition)
-            {
-                PlaceLight(position, _lightVerticalRotations[j]);
-                j++;
+                PlaceLight(position, rotation);
             }
 
             // Add random scenery to rooms
@@ -201,6 +167,54 @@ namespace Dungeon
             */
             
             SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
+        }
+
+        private void CollectLightPositions(Node room)
+        {
+            Vector3 bottomLeftCorner = new Vector3(room.BottomLeftAreaCorner.x, 0, room.BottomLeftAreaCorner.y);
+            Vector3 bottomRightCorner = new Vector3(room.BottomRightAreaCorner.x, 0, room.BottomRightAreaCorner.y);
+            Vector3 topLeftCorner = new Vector3(room.TopLeftAreaCorner.x, 0, room.TopLeftAreaCorner.y);
+            Vector3 topRightCorner = new Vector3(room.TopRightAreaCorner.x, 0, room.TopRightAreaCorner.y);
+
+            for (var x = bottomLeftCorner.x; x <= bottomRightCorner.x; x++)
+            {
+                var position = new Vector3(x, 0, bottomLeftCorner.z);
+                SaveLightPosition(position, 0);
+            }
+            
+            for (var x = topLeftCorner.x; x <= topRightCorner.x; x++)
+            {
+                var position = new Vector3(x, 0, topLeftCorner.z);
+                SaveLightPosition(position, 180);
+            }
+
+            for (var z = bottomLeftCorner.z; z <= topLeftCorner.z; z++)
+            {
+                var position = new Vector3(bottomLeftCorner.x, 0, z);
+                SaveLightPosition(position, 90);
+            }
+            
+            for (var z = bottomRightCorner.z; z <= topRightCorner.z; z++)
+            {
+                var position = new Vector3(bottomRightCorner.x, 0, z);
+                SaveLightPosition(position, -90);
+            }
+        }
+
+        private void SaveLightPosition(Vector3 position, int rotation)
+        {
+            // TODO: Don't choose every possible position to place lights
+            Vector3Int point = Vector3Int.CeilToInt(position);
+
+            if (_lightPositions.ContainsKey(point))
+            {
+                _lightPositions.Remove(point);
+                _ignoreLightPositions.Add(point);
+            }
+            else if(!_ignoreLightPositions.Contains(point))
+            {
+                _lightPositions.Add(point, rotation);
+            }
         }
 
         private void PlaceRandomScenery(Node room)
@@ -226,45 +240,10 @@ namespace Dungeon
             lightSource.color = lightColor;
         }
 
-        private void PlaceDoors(Node room)
-        {
-            Vector3 positionFirstDoor;
-            Vector3 positionSecondDor;
-            bool isHorizontalDoor = false;
-            
-            if (!room.IsHorizontalCorridor)
-            {
-                int bottomLengthHalf = Math.Abs(room.BottomRightAreaCorner.x - room.BottomLeftAreaCorner.x) / 2;
-                int topLengthHalf = Math.Abs(room.TopRightAreaCorner.x - room.TopLeftAreaCorner.x) / 2;
-                positionFirstDoor = new Vector3(room.BottomLeftAreaCorner.x + bottomLengthHalf, 0, room.BottomLeftAreaCorner.y);
-                positionSecondDor = new Vector3(room.TopLeftAreaCorner.x + topLengthHalf, 0, room.TopLeftAreaCorner.y);
-            }
-            else
-            {
-                int leftLengthHalf = Math.Abs(room.TopLeftAreaCorner.y - room.BottomLeftAreaCorner.y) / 2;
-                int rightLengthHalf = Math.Abs(room.TopRightAreaCorner.y - room.BottomRightAreaCorner.y) / 2;
-                positionFirstDoor = new Vector3(room.BottomLeftAreaCorner.x, 0, room.BottomLeftAreaCorner.y + leftLengthHalf);
-                positionSecondDor = new Vector3(room.BottomRightAreaCorner.x, 0, room.BottomRightAreaCorner.y  + rightLengthHalf);
-                isHorizontalDoor = true;
-            }
-            
-            _doorPositions.Add(positionFirstDoor);
-            _doorPositions.Add(positionSecondDor);
-            var door1 = Instantiate(doorPrefab, positionFirstDoor, Quaternion.identity);
-            var door2 = Instantiate(doorPrefab, positionSecondDor, Quaternion.identity);
-
-            if (isHorizontalDoor)
-            {
-                var ninetyDegreesRotation = new Vector3(0, 90, 0);
-                door1.transform.Rotate(ninetyDegreesRotation);
-                door2.transform.Rotate(ninetyDegreesRotation);
-            }
-        }
-
         private void CreateWalls(Node room, List<Node> rooms)
         {
-            // TODO: When collect vertices for a room check if any corridor has a corner point
-            // TODO: in the range of the wall
+            // When collect vertices for a room check if any corridor has its corner points
+            // in the range of the wall
 
             List<Vector3> vertices;
 
@@ -590,128 +569,15 @@ namespace Dungeon
             return dungeonFloor;
         }
 
-        private void CollectTorchPositionsInCorridors(Vector2 bottomLeftCorner, Vector2 topRightCorner, bool isHorizontal)
-        {
-            Vector3 bottomLeftV = new Vector3(bottomLeftCorner.x, 0, bottomLeftCorner.y);
-            Vector3 bottomRightV = new Vector3(topRightCorner.x, 0, bottomLeftCorner.y);
-            Vector3 topLeftV = new Vector3(bottomLeftCorner.x, 0, topRightCorner.y);
-            Vector3 topRightV = new Vector3(topRightCorner.x, 0, topRightCorner.y);
-
-            int index = 0;
-            // Start at +1 and go to -1 from the corners so the torches are not placed in the corners
-            if (isHorizontal)
-            {
-                for (int row = (int) bottomLeftV.x + 1; row < (int) bottomRightV.x - 1; row++)
-                {
-                    var position = new Vector3(row, 0, bottomLeftV.z);
-                    AddTorchPositionToList(position, _possibleLightHorizontalPosition, _lightHorizontalRotations, true, index, 0);
-                    index++;
-                }
-                
-                index = 0;
-                for (int row = (int) topLeftV.x + 1; row < (int) topRightCorner.x - 1; row++)
-                {
-                    var position = new Vector3(row, 0, topRightV.z);
-                    AddTorchPositionToList(position, _possibleLightHorizontalPosition, _lightHorizontalRotations, true, index, 180);
-                    index++;
-                }
-            }
-            else
-            {
-                for (int col = (int) bottomLeftV.z + 1; col < (int) topLeftV.z - 1; col++)
-                {
-                    var position = new Vector3(bottomLeftV.x, 0, col);
-                    AddTorchPositionToList(position, _possibleLightVerticalPosition, _lightVerticalRotations, true, index, 90);
-                    index++;
-                }
-            
-                index = 0;
-                for (int col = (int) bottomRightV.z + 1; col < (int) topRightV.z - 1; col++)
-                {
-                    var position = new Vector3(bottomRightV.x, 0, col);
-                    AddTorchPositionToList(position, _possibleLightVerticalPosition, _lightVerticalRotations, true, index, -90);
-                    index++;
-                }
-            }
-        }
-        
-        private void CollectTorchPositionsInRooms(Vector2 bottomLeftCorner, Vector2 topRightCorner)
-        {
-            Vector3 bottomLeftV = new Vector3(bottomLeftCorner.x, 0, bottomLeftCorner.y);
-            Vector3 bottomRightV = new Vector3(topRightCorner.x, 0, bottomLeftCorner.y);
-            Vector3 topLeftV = new Vector3(bottomLeftCorner.x, 0, topRightCorner.y);
-            Vector3 topRightV = new Vector3(topRightCorner.x, 0, topRightCorner.y);
-            
-            var index = 0;
-            for (int row = (int) bottomLeftV.x + 1; row < (int) bottomRightV.x - 1; row++)
-            {
-                var wallPosition = new Vector3(row, 0, bottomLeftV.z);
-                AddTorchPositionToList(wallPosition, _possibleLightHorizontalPosition, _lightHorizontalRotations, false, index, 0);
-                index++;
-            }
-
-            index = 0;
-            for (int row = (int) topLeftV.x + 1; row < (int) topRightCorner.x - 1; row++)
-            {
-                var wallPosition = new Vector3(row, 0, topRightV.z);
-                AddTorchPositionToList(wallPosition, _possibleLightHorizontalPosition, _lightHorizontalRotations, false, index, 180);
-                index++;
-            }
-
-            index = 0;
-            for (int col = (int) bottomLeftV.z + 1; col < (int) topLeftV.z - 1; col++)
-            {
-                var wallPosition = new Vector3(bottomLeftV.x, 0, col);
-                AddTorchPositionToList(wallPosition, _possibleLightVerticalPosition, _lightVerticalRotations, false, index, 90);
-                index++;
-            }
-
-            index = 0;
-            for (int col = (int) bottomRightV.z + 1; col < (int) topRightV.z - 1; col++)
-            {
-                var wallPosition = new Vector3(bottomRightV.x, 0, col);
-                AddTorchPositionToList(wallPosition, _possibleLightVerticalPosition, _lightVerticalRotations, false, index, -90);
-                index++;
-            }
-        }
-
-        /// <summary>
-        /// This method searches the positions for the walls and adds them to the wallList
-        /// </summary>
-        /// <param name="position">Contains the position for the wall</param>
-        /// <param name="wallList">Is the list where the wall positions will be added</param>
-        /// <param name="doorList"></param>
-        /// <param name="torchList">Contains the positions of the torches</param>
-        /// <param name="isWallGettingTorch"></param>
-        private void AddTorchPositionToList(Vector3 position, List<Vector3Int> torchList, List<int> torchRotationList, bool isCorridor, int index, int rotation)
-        {
-            Vector3Int point = Vector3Int.CeilToInt(position);
-
-            if (isCorridor && index % 2 == 0)
-            {
-                torchList.Add(point);
-                torchRotationList.Add(rotation);
-            }
-            else if (!_doorPositions.Contains(point) && index % 6 == 0)
-            {
-                torchList.Add(point);   
-                torchRotationList.Add(rotation);
-            }
-        }
 
         // For developing purpose to see if the points are on the correct position
         private void OnDrawGizmos()
         {
-            if (_testList == null) return;
+            if (_lightPositions == null) return;
 
             Gizmos.color = Color.black;
 
-            foreach (var point in _testList)
-            {
-                Gizmos.DrawSphere(point, 0.1f);
-            }
-
-            foreach (var point in _testList)
+            foreach (var (point, rotation) in _lightPositions)
             {
                 Gizmos.DrawSphere(point, 0.1f);
             }
