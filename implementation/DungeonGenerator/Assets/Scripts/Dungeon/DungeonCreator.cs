@@ -37,17 +37,18 @@ namespace Dungeon
         public GameObject doorPrefab;
         public List<GameObject> sceneryPrefabs;
 
-        private List<Vector3Int> _possibleTorchHorizontalPosition;
-        private List<Vector3Int> _possibleTorchVerticalPosition;
+        private List<Vector3Int> _possibleLightHorizontalPosition;
+        private List<Vector3Int> _possibleLightVerticalPosition;
         private List<Vector3> _doorPositions;
-        private List<int> _torchHorizontalRotations;
-        private List<int> _torchVerticalRotations;
+        private List<int> _lightHorizontalRotations;
+        private List<int> _lightVerticalRotations;
 
         private readonly List<GameObject> _dungeonFloors = new();
-
-        private List<Vector3> _vertices;
+        
         private int[] _triangles;
         private Vector2[] _uvCoordinates;
+
+        private List<Vector3> _testList;
 
         // Unity Methods
         private void Start()
@@ -67,6 +68,8 @@ namespace Dungeon
         /// </summary>
         private void CreateDungeon()
         {
+            _testList = new List<Vector3>();
+            
             DungeonGenerator generator = new DungeonGenerator(dungeonWidth, dungeonLength);
             var listOfRooms = generator.CalculateDungeon(
                 maxIterations, 
@@ -80,11 +83,11 @@ namespace Dungeon
                 corridorWidth
             );
             
-            _possibleTorchHorizontalPosition = new List<Vector3Int>();
-            _possibleTorchVerticalPosition = new List<Vector3Int>();
+            _possibleLightHorizontalPosition = new List<Vector3Int>();
+            _possibleLightVerticalPosition = new List<Vector3Int>();
             _doorPositions = new List<Vector3>();
-            _torchHorizontalRotations = new List<int>();
-            _torchVerticalRotations = new List<int>();
+            _lightHorizontalRotations = new List<int>();
+            _lightVerticalRotations = new List<int>();
             
             RoomNode startRoom = (RoomNode) listOfRooms[0];
             GameObject endRoom = null;
@@ -156,16 +159,9 @@ namespace Dungeon
                 );
             }
 
-            _vertices = new List<Vector3>();
-
             foreach (var room in listOfRooms)
             {
-                CreateWalls(room);
-                
-                if (room.IsCorridor)
-                {
-                    PlaceDoors(room);
-                }
+                CreateWalls(room, listOfRooms);
             }
 
             // Collect torch positions in rooms
@@ -178,27 +174,31 @@ namespace Dungeon
             {
                 CollectTorchPositionsInCorridors(listOfRooms[i].BottomLeftAreaCorner,
                     listOfRooms[i].TopRightAreaCorner, listOfRooms[i].IsHorizontalCorridor);
+                
+                //_testList.Add(new Vector3(listOfRooms[i].BottomLeftAreaCorner.x, 0, listOfRooms[i].BottomLeftAreaCorner.y));
             }
 
             int j = 0;
-            foreach (var position in _possibleTorchHorizontalPosition)
+            foreach (var position in _possibleLightHorizontalPosition)
             {
-                PlaceLight(position, _torchHorizontalRotations[j]);
+                PlaceLight(position, _lightHorizontalRotations[j]);
                 j++;
             }
 
             j = 0;
-            foreach (var position in _possibleTorchVerticalPosition)
+            foreach (var position in _possibleLightVerticalPosition)
             {
-                PlaceLight(position, _torchVerticalRotations[j]);
+                PlaceLight(position, _lightVerticalRotations[j]);
                 j++;
             }
 
             // Add random scenery to rooms
+            /*
             for (int i = 0; i < listOfRooms.Count / 2; i++)
             {
                 PlaceRandomScenery(listOfRooms[i]);
             }
+            */
             
             SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
         }
@@ -261,23 +261,129 @@ namespace Dungeon
             }
         }
 
-        private void CreateWalls(Node room)
+        private void CreateWalls(Node room, List<Node> rooms)
         {
-            // Horizontal
-            var vertices = CollectHorizontalWallVertices(room.BottomLeftAreaCorner, room.BottomRightAreaCorner);
-            CreateWallMesh(vertices, room.BottomLeftAreaCorner, room.BottomRightAreaCorner, true,true);
+            // TODO: When collect vertices for a room check if any corridor has a corner point
+            // TODO: in the range of the wall
 
+            List<Vector3> vertices;
+
+            bool isCorridorBetweenHorizontalBottom = false;
+            bool isCorridorBetweenHorizontalTop = false;
+            bool isCorridorBetweenVerticalLeft = false;
+            bool isCorridorBetweenVerticalRight = false;
+            
+            // Split wall into two walls
+            // Check if there is a corridor between the start and endpoint of the wall
+            // But only if it is a room and no corridor
+            if (!room.IsCorridor)
+            {
+                for (var i = (rooms.Count / 2 + 1); i < rooms.Count; i++)
+                {
+                    Node corridor = rooms[i];
+
+                    // Bottom horizontal wall
+                    if (corridor.TopLeftAreaCorner.y == room.BottomLeftAreaCorner.y &&
+                        room.BottomLeftAreaCorner.x < corridor.TopLeftAreaCorner.x &&
+                        corridor.TopLeftAreaCorner.x < room.BottomRightAreaCorner.x &&
+                        room.BottomLeftAreaCorner.x < corridor.TopRightAreaCorner.x &&
+                        corridor.TopRightAreaCorner.x < room.BottomRightAreaCorner.x)
+                    {
+                        isCorridorBetweenHorizontalBottom = true;
+
+                        vertices = CollectHorizontalWallVertices(room.BottomLeftAreaCorner, corridor.TopLeftAreaCorner);
+                        CreateWallMesh(vertices, room.BottomLeftAreaCorner, corridor.TopLeftAreaCorner, true,true);
+                        
+                        vertices = CollectHorizontalWallVertices(corridor.TopRightAreaCorner, room.BottomRightAreaCorner);
+                        CreateWallMesh(vertices, corridor.TopRightAreaCorner, room.BottomRightAreaCorner, true, true);
+                    }
+                    
+                    // Top horizontal wall
+                    if (corridor.BottomLeftAreaCorner.y == room.TopLeftAreaCorner.y &&
+                        room.TopLeftAreaCorner.x < corridor.BottomLeftAreaCorner.x &&
+                        corridor.BottomLeftAreaCorner.x < room.TopRightAreaCorner.x &&
+                        room.TopLeftAreaCorner.x < corridor.BottomRightAreaCorner.x &&
+                        corridor.BottomRightAreaCorner.x < room.TopRightAreaCorner.x)
+                    {
+                        isCorridorBetweenHorizontalTop = true;
+
+                        vertices = CollectHorizontalWallVertices(room.TopLeftAreaCorner, corridor.BottomLeftAreaCorner);
+                        CreateWallMesh(vertices, room.TopLeftAreaCorner, corridor.BottomLeftAreaCorner, true,false);
+                        
+                        vertices = CollectHorizontalWallVertices(corridor.BottomRightAreaCorner, room.TopRightAreaCorner);
+                        CreateWallMesh(vertices, corridor.BottomRightAreaCorner, room.TopRightAreaCorner, true, false);
+                    }
+                    
+                    // Left vertical wall
+                    if (corridor.BottomRightAreaCorner.x == room.BottomLeftAreaCorner.x &&
+                        room.BottomLeftAreaCorner.y < corridor.BottomRightAreaCorner.y &&
+                        corridor.BottomRightAreaCorner.y < room.TopLeftAreaCorner.y &&
+                        room.BottomLeftAreaCorner.y < corridor.TopRightAreaCorner.y &&
+                        corridor.TopRightAreaCorner.y < room.TopLeftAreaCorner.y)
+                    {
+                        isCorridorBetweenVerticalLeft = true;
+                        
+                        vertices = CollectVerticalWallVertices(room.BottomLeftAreaCorner, corridor.BottomRightAreaCorner);
+                        CreateWallMesh(vertices, room.BottomLeftAreaCorner, corridor.BottomRightAreaCorner, false,false);
+                        
+                        vertices = CollectVerticalWallVertices(corridor.TopRightAreaCorner, room.TopLeftAreaCorner);
+                        CreateWallMesh(vertices, corridor.TopRightAreaCorner, room.TopLeftAreaCorner, false, false);
+                    }
+                    
+                    // Right vertical
+                    if (corridor.BottomLeftAreaCorner.x == room.BottomRightAreaCorner.x &&
+                        room.BottomRightAreaCorner.y < corridor.BottomLeftAreaCorner.y &&
+                        corridor.BottomLeftAreaCorner.y < room.TopRightAreaCorner.y &&
+                        room.BottomRightAreaCorner.y < corridor.TopLeftAreaCorner.y &&
+                        corridor.TopLeftAreaCorner.y < room.TopRightAreaCorner.y)
+                    {
+                        isCorridorBetweenVerticalRight = true;
+                        
+                        vertices = CollectVerticalWallVertices(room.BottomRightAreaCorner, corridor.BottomLeftAreaCorner);
+                        CreateWallMesh(vertices, room.BottomRightAreaCorner, corridor.BottomLeftAreaCorner, false,true);
+                        
+                        vertices = CollectVerticalWallVertices(corridor.TopLeftAreaCorner, room.TopRightAreaCorner);
+                        CreateWallMesh(vertices, corridor.TopLeftAreaCorner, room.TopRightAreaCorner, false, true);
+                    }
+                }    
+            }
+            
+            // Create walls normal as one wall
             // Horizontal
-            vertices = CollectHorizontalWallVertices(room.TopLeftAreaCorner, room.TopRightAreaCorner);
-            CreateWallMesh(vertices, room.TopLeftAreaCorner, room.TopRightAreaCorner, true, false);
+            if (!room.IsCorridor || room.IsHorizontalCorridor)
+            {
+                // Bottom horizontal wall
+                if (!isCorridorBetweenHorizontalBottom)
+                {
+                    vertices = CollectHorizontalWallVertices(room.BottomLeftAreaCorner, room.BottomRightAreaCorner);
+                    CreateWallMesh(vertices, room.BottomLeftAreaCorner, room.BottomRightAreaCorner, true,true);
+                }
+                
+                if (!isCorridorBetweenHorizontalTop)
+                {
+                    // Top horizontal wall
+                    vertices = CollectHorizontalWallVertices(room.TopLeftAreaCorner, room.TopRightAreaCorner);
+                    CreateWallMesh(vertices, room.TopLeftAreaCorner, room.TopRightAreaCorner, true, false);
+                }
+            }
 
             // Vertical
-            vertices = CollectVerticalWallVertices(room.BottomLeftAreaCorner, room.TopLeftAreaCorner);
-            CreateWallMesh(vertices, room.BottomLeftAreaCorner, room.TopLeftAreaCorner, false, false);
+            if (!room.IsCorridor || !room.IsHorizontalCorridor)
+            {
+                if (!isCorridorBetweenVerticalLeft)
+                {
+                    // Left vertical wall
+                    vertices = CollectVerticalWallVertices(room.BottomLeftAreaCorner, room.TopLeftAreaCorner);
+                    CreateWallMesh(vertices, room.BottomLeftAreaCorner, room.TopLeftAreaCorner, false, false);    
+                }
 
-            // Vertical
-            vertices = CollectVerticalWallVertices(room.BottomRightAreaCorner, room.TopRightAreaCorner);
-            CreateWallMesh(vertices, room.BottomRightAreaCorner, room.TopRightAreaCorner, false, true);
+                if (!isCorridorBetweenVerticalRight)
+                {
+                    // Right vertical wall
+                    vertices = CollectVerticalWallVertices(room.BottomRightAreaCorner, room.TopRightAreaCorner);
+                    CreateWallMesh(vertices, room.BottomRightAreaCorner, room.TopRightAreaCorner, false, true);    
+                }
+            }
         }
 
         private List<Vector3> CollectHorizontalWallVertices(Vector2Int startCorner, Vector2Int endCorner)
@@ -393,21 +499,6 @@ namespace Dungeon
             wall.layer = Layer.WallLayer;
             wall.isStatic = true;
         }
-        
-        private void AddVertexToList(Vector3 vertex)
-        {
-            _vertices.Add(vertex);
-            /*
-            if (_vertices.Contains(vertex))
-            {
-                _vertices.Remove(vertex);
-            }
-            else
-            {
-                _vertices.Add(vertex);    
-            }
-            */
-        }
 
         /// <summary>
         /// This method spawns the player in a given room
@@ -513,7 +604,7 @@ namespace Dungeon
                 for (int row = (int) bottomLeftV.x + 1; row < (int) bottomRightV.x - 1; row++)
                 {
                     var position = new Vector3(row, 0, bottomLeftV.z);
-                    AddTorchPositionToList(position, _possibleTorchHorizontalPosition, _torchHorizontalRotations, true, index, 0);
+                    AddTorchPositionToList(position, _possibleLightHorizontalPosition, _lightHorizontalRotations, true, index, 0);
                     index++;
                 }
                 
@@ -521,7 +612,7 @@ namespace Dungeon
                 for (int row = (int) topLeftV.x + 1; row < (int) topRightCorner.x - 1; row++)
                 {
                     var position = new Vector3(row, 0, topRightV.z);
-                    AddTorchPositionToList(position, _possibleTorchHorizontalPosition, _torchHorizontalRotations, true, index, 180);
+                    AddTorchPositionToList(position, _possibleLightHorizontalPosition, _lightHorizontalRotations, true, index, 180);
                     index++;
                 }
             }
@@ -530,7 +621,7 @@ namespace Dungeon
                 for (int col = (int) bottomLeftV.z + 1; col < (int) topLeftV.z - 1; col++)
                 {
                     var position = new Vector3(bottomLeftV.x, 0, col);
-                    AddTorchPositionToList(position, _possibleTorchVerticalPosition, _torchVerticalRotations, true, index, 90);
+                    AddTorchPositionToList(position, _possibleLightVerticalPosition, _lightVerticalRotations, true, index, 90);
                     index++;
                 }
             
@@ -538,7 +629,7 @@ namespace Dungeon
                 for (int col = (int) bottomRightV.z + 1; col < (int) topRightV.z - 1; col++)
                 {
                     var position = new Vector3(bottomRightV.x, 0, col);
-                    AddTorchPositionToList(position, _possibleTorchVerticalPosition, _torchVerticalRotations, true, index, -90);
+                    AddTorchPositionToList(position, _possibleLightVerticalPosition, _lightVerticalRotations, true, index, -90);
                     index++;
                 }
             }
@@ -555,7 +646,7 @@ namespace Dungeon
             for (int row = (int) bottomLeftV.x + 1; row < (int) bottomRightV.x - 1; row++)
             {
                 var wallPosition = new Vector3(row, 0, bottomLeftV.z);
-                AddTorchPositionToList(wallPosition, _possibleTorchHorizontalPosition, _torchHorizontalRotations, false, index, 0);
+                AddTorchPositionToList(wallPosition, _possibleLightHorizontalPosition, _lightHorizontalRotations, false, index, 0);
                 index++;
             }
 
@@ -563,7 +654,7 @@ namespace Dungeon
             for (int row = (int) topLeftV.x + 1; row < (int) topRightCorner.x - 1; row++)
             {
                 var wallPosition = new Vector3(row, 0, topRightV.z);
-                AddTorchPositionToList(wallPosition, _possibleTorchHorizontalPosition, _torchHorizontalRotations, false, index, 180);
+                AddTorchPositionToList(wallPosition, _possibleLightHorizontalPosition, _lightHorizontalRotations, false, index, 180);
                 index++;
             }
 
@@ -571,7 +662,7 @@ namespace Dungeon
             for (int col = (int) bottomLeftV.z + 1; col < (int) topLeftV.z - 1; col++)
             {
                 var wallPosition = new Vector3(bottomLeftV.x, 0, col);
-                AddTorchPositionToList(wallPosition, _possibleTorchVerticalPosition, _torchVerticalRotations, false, index, 90);
+                AddTorchPositionToList(wallPosition, _possibleLightVerticalPosition, _lightVerticalRotations, false, index, 90);
                 index++;
             }
 
@@ -579,7 +670,7 @@ namespace Dungeon
             for (int col = (int) bottomRightV.z + 1; col < (int) topRightV.z - 1; col++)
             {
                 var wallPosition = new Vector3(bottomRightV.x, 0, col);
-                AddTorchPositionToList(wallPosition, _possibleTorchVerticalPosition, _torchVerticalRotations, false, index, -90);
+                AddTorchPositionToList(wallPosition, _possibleLightVerticalPosition, _lightVerticalRotations, false, index, -90);
                 index++;
             }
         }
@@ -609,24 +700,21 @@ namespace Dungeon
         }
 
         // For developing purpose to see if the points are on the correct position
-        /*
         private void OnDrawGizmos()
         {
-            if (_possibleTorchHorizontalPosition == null) return;
-            if (_possibleTorchVerticalPosition == null) return;
-            
+            if (_testList == null) return;
+
             Gizmos.color = Color.black;
 
-            foreach (var point in _possibleTorchHorizontalPosition)
+            foreach (var point in _testList)
             {
                 Gizmos.DrawSphere(point, 0.1f);
             }
-            
-            foreach (var point in _possibleTorchVerticalPosition)
+
+            foreach (var point in _testList)
             {
                 Gizmos.DrawSphere(point, 0.1f);
             }
         }
-        */
     }    
 }
