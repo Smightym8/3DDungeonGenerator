@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Diagnostics;
 using System.Linq;
+using Unity.AI.Navigation;
+using UnityEngine.AI;
 using Debug = UnityEngine.Debug;
 using Random = UnityEngine.Random;
 
@@ -34,18 +36,30 @@ namespace Dungeon
         public GameObject playerPrefab;
         public GameObject torchPrefab;
         public List<GameObject> sceneryPrefabs;
+        
+        public List<GameObject> enemyPrefabs;
+        public List<RuntimeAnimatorController> enemyAnimators;
+        public List<Avatar> enemyAvatars;
+        private GameObject _navMeshRoot;
 
         private List<Vector3Int> _possibleLightPositions;
         private Dictionary<Vector3Int, int> _lightPositions;
         private List<Vector3Int> _ignoreLightPositions;
         private readonly List<GameObject> _dungeonFloors = new();
-        private GameObject _floorParent, _roofParent, _wallParent;
+        private GameObject _floorParent, _roofParent, _wallParent, _lightsParent;
 
         // TODO: Move to appropriate method
         private int[] _triangles;
         private Vector2[] _uvCoordinates;
 
         // Unity Methods
+        private void Awake () {
+            if (_navMeshRoot == null)
+            {
+                _navMeshRoot = new GameObject("NavMeshRoot");
+            }
+        }
+        
         private void Start()
         {
             var sw = new Stopwatch();
@@ -99,6 +113,14 @@ namespace Dungeon
                 transform =
                 {
                     parent = currentTransform
+                }
+            };
+
+            _lightsParent = new GameObject("Lights", typeof(MeshFilter), typeof(MeshRenderer))
+            {
+                transform =
+                {
+                    parent = currentTransform,
                 }
             };
 
@@ -185,7 +207,6 @@ namespace Dungeon
             CombineMeshes(_floorParent, true);
             CombineMeshes(_roofParent, true);
             CombineMeshes(_wallParent, false);
-
             
             // Place lights
             foreach (var (position, rotation) in _lightPositions)
@@ -199,9 +220,77 @@ namespace Dungeon
             {
                 PlaceRandomScenery(listOfRooms[i]);
             }
+            
+            BuildNavMesh();
+            SpawnEnemy(enemyPrefabs[0], enemyAnimators[0], enemyAvatars[0], (RoomNode) listOfRooms[1]);
             */
             
             SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
+        }
+        
+        private void BuildNavMesh() {
+            int agentTypeCount = NavMesh.GetSettingsCount();
+            if (agentTypeCount < 1) { return; }
+
+            for (int i = 0; i < _dungeonFloors.Count; ++i)
+            {
+                _dungeonFloors[i].transform.SetParent(_navMeshRoot.transform, true);
+            }
+        
+            for (int i = 0; i < agentTypeCount; ++i) {
+                NavMeshBuildSettings settings = NavMesh.GetSettingsByIndex(i);
+                NavMeshSurface navMeshSurface = gameObject.AddComponent<NavMeshSurface>();
+                navMeshSurface.agentTypeID = settings.agentTypeID;
+     
+                navMeshSurface.GetBuildSettings();
+                navMeshSurface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
+     
+                navMeshSurface.BuildNavMesh();
+            }
+        }
+        
+        /// <summary>
+        /// This method spawns an enemy in a given room
+        /// </summary>
+        /// <param name="enemy">Contains the prefab of the enemy</param>
+        /// <param name="animatorController">Contains the controller that will be used for the animations of the enemy</param>
+        /// <param name="avatar">Contains the avatar that is needed for the animations</param>
+        /// <param name="room">Contains the room where the enemy will be spawned</param>
+        private void SpawnEnemy(GameObject enemy, RuntimeAnimatorController animatorController, Avatar avatar, RoomNode room)
+        {
+            var spawnPosition = room.CentrePoint;
+            spawnPosition.y = 0.02f;
+
+            var instantiatedEnemy = Instantiate(enemy);
+            instantiatedEnemy.transform.position = spawnPosition;
+            
+            // Add animation controller to instantiated enemy
+            //instantiatedEnemy.AddComponent<Animator>();
+            Animator animator = instantiatedEnemy.GetComponent<Animator>();
+            animator.runtimeAnimatorController = animatorController;
+            animator.avatar = avatar;
+
+            // Add Rigidbody
+            instantiatedEnemy.AddComponent<Rigidbody>();
+            var rigidBody = instantiatedEnemy.GetComponent<Rigidbody>();
+            rigidBody.isKinematic = true;
+            
+            // Add Collider
+            instantiatedEnemy.AddComponent<CapsuleCollider>();
+            
+            // Add NavMeshAgent
+            instantiatedEnemy.AddComponent<NavMeshAgent>();
+
+            // Add scripts
+            instantiatedEnemy.AddComponent<Enemy.EnemyMovement>();
+            instantiatedEnemy.AddComponent<Health>();
+            
+            // Assign animator to enemy movement script
+            var enemyMovementScript = instantiatedEnemy.GetComponent<Enemy.EnemyMovement>();
+            enemyMovementScript.animator = animator;
+            
+            // Add tag
+            instantiatedEnemy.tag = Tag.Enemy;
         }
 
         private void CombineMeshes(GameObject parent, bool isFloorOrRoof)
@@ -223,10 +312,13 @@ namespace Dungeon
             parent.transform.GetComponent<MeshFilter>().mesh = new Mesh();
             parent.transform.GetComponent<MeshFilter>().mesh.CombineMeshes(combine);
             parent.isStatic = true;
+            
             // Add material
             parent.GetComponent<Renderer>().material = isFloorOrRoof ? floorMaterial : wallMaterial;
             // Add collider
             parent.AddComponent<MeshCollider>();
+            // Add layer
+            parent.layer = isFloorOrRoof ? Layer.GroundLayer : Layer.WallLayer;
             
             parent.transform.position = position;
             parent.transform.gameObject.SetActive(true);
@@ -378,10 +470,13 @@ namespace Dungeon
             lightPosition.y = dungeonHeight - 1;
 
             var lightGameObject = Instantiate(torchPrefab, lightPosition, Quaternion.identity);
+            lightGameObject.transform.parent = _lightsParent.transform;
             lightGameObject.transform.Rotate(new Vector3(0, rotation, 0));
+            lightGameObject.isStatic = true;
+            
             Light lightSource = lightGameObject.AddComponent<Light>();
             lightSource.type = LightType.Point;
-            lightSource.intensity = 3;
+            lightSource.intensity = 5;
             lightSource.range = 3;
             lightSource.color = lightColor;
         }

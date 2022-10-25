@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_SkyboxMaterial: {fileID: 2100000, guid: c494c335823f54b52b2e87e1b7a63a23, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0.44657826, g: 0.49641263, b: 0.57481676, a: 1}
+  m_IndirectSpecularColor: {r: 0.09279401, g: 0.11820955, b: 0.15350309, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -324,7 +324,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 279191908}
-  m_LocalRotation: {x: 0.20625491, y: 0.000000032603573, z: -0.0000000068724155, w: 0.9784983}
+  m_LocalRotation: {x: 0.20625494, y: -0.000000019448535, z: 0.0000000040995025, w: 0.97849834}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -372,6 +372,7 @@ MonoBehaviour:
   maxIterations: 60
   corridorWidth: 4
   dungeonHeight: 4
+  lightFrequency: 5
   floorMaterial: {fileID: 2100000, guid: d6c86796e41109349916ebb4500273ee, type: 2}
   roofMaterial: {fileID: 2100000, guid: d6c86796e41109349916ebb4500273ee, type: 2}
   startRoomMaterial: {fileID: 2100000, guid: d6c86796e41109349916ebb4500273ee, type: 2}
@@ -385,6 +386,12 @@ MonoBehaviour:
   torchPrefab: {fileID: 8060405944448375545, guid: 7970c12d6b19a504fbc82353b8a43abe, type: 3}
   sceneryPrefabs:
   - {fileID: 1907257163547374, guid: 18b741bae3494f042a738e61532bd5d6, type: 3}
+  enemyPrefabs:
+  - {fileID: 919132149155446097, guid: 361333c4759c6c84c9a1455a3d85907a, type: 3}
+  enemyAnimators:
+  - {fileID: 9100000, guid: c08ff00b8cf94e244a0870a41060c650, type: 2}
+  enemyAvatars:
+  - {fileID: 9000000, guid: 361333c4759c6c84c9a1455a3d85907a, type: 3}
 --- !u!4 &507846948
 Transform:
   m_ObjectHideFlags: 0
@@ -442,7 +449,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!108 &705507994
 Light:
   m_ObjectHideFlags: 0
@@ -715,7 +722,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
-  m_LocalRotation: {x: 0.18842244, y: 0.000000032723197, z: -0.000000006278239, w: 0.9820881}
+  m_LocalRotation: {x: 0.18842244, y: -0.000000032723197, z: 0.000000006278239, w: 0.9820881}
   m_LocalPosition: {x: 0, y: 3, z: -4.9100003}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -953,7 +960,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1477826468}
-  m_LocalRotation: {x: 0.17057492, y: -1e-45, z: -0, w: 0.98534477}
+  m_LocalRotation: {x: 0.17057492, y: -0, z: -0, w: 0.98534477}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -1031,7 +1038,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1624330194}
-  m_LocalRotation: {x: 0.18842243, y: 1e-45, z: -0, w: 0.9820881}
+  m_LocalRotation: {x: 0.18842243, y: -2.0522938e-37, z: 8.485493e-38, w: 0.9820881}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -1872,8 +1879,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHealth: 100
---- !u!136 &1968490578
-CapsuleCollider:
+--- !u!65 &1968490578
+BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1882,7 +1889,6 @@ CapsuleCollider:
   m_Material: {fileID: 0}
   m_IsTrigger: 0
   m_Enabled: 1
-  m_Radius: 0.5
-  m_Height: 2.2
-  m_Direction: 1
+  serializedVersion: 2
+  m_Size: {x: 1, y: 2, z: 0.5}
   m_Center: {x: 0, y: 1, z: 0}
