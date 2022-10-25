@@ -6,7 +6,6 @@ using System.Linq;
 using Debug = UnityEngine.Debug;
 using Random = UnityEngine.Random;
 
-// TODO: Combine meshes
 namespace Dungeon
 {
     public class DungeonCreator : MonoBehaviour
@@ -37,9 +36,10 @@ namespace Dungeon
 
         private Dictionary<Vector3Int, int> _lightPositions;
         private List<Vector3Int> _ignoreLightPositions;
-
         private readonly List<GameObject> _dungeonFloors = new();
-        
+        private GameObject _floorParent, _roofParent, _wallParent;
+
+        // TODO: Move to appropriate method
         private int[] _triangles;
         private Vector2[] _uvCoordinates;
 
@@ -73,6 +73,33 @@ namespace Dungeon
                 roomOffset,
                 corridorWidth
             );
+            
+            // Parent objects for floor, roof and walls
+            var currentTransform = transform;
+            _floorParent = new GameObject("Floors", typeof(MeshFilter), typeof(MeshRenderer))
+            {
+                transform =
+                {
+                    parent = currentTransform
+                }
+            };
+            
+            _roofParent = new GameObject("Roofs", typeof(MeshFilter), typeof(MeshRenderer))
+            {
+                transform =
+                {
+                    parent = currentTransform
+                }
+            };
+            
+            _wallParent = new GameObject("Walls", typeof(MeshFilter), typeof(MeshRenderer))
+            {
+                transform =
+                {
+                    parent = currentTransform
+                }
+            };
+
 
             _lightPositions = new Dictionary<Vector3Int, int>();
             _ignoreLightPositions = new List<Vector3Int>();
@@ -153,6 +180,10 @@ namespace Dungeon
                 CollectLightPositions(room);
             }
             
+            CombineMeshes(_floorParent, true);
+            CombineMeshes(_roofParent, true);
+            CombineMeshes(_wallParent, false);
+
             foreach (var (position, rotation) in _lightPositions)
             {
                 PlaceLight(position, rotation);
@@ -169,6 +200,33 @@ namespace Dungeon
             SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
         }
 
+        private void CombineMeshes(GameObject parent, bool isFloorOrRoof)
+        {
+            Vector3 position = parent.transform.position;
+            
+            MeshFilter[] meshFilters = parent.GetComponentsInChildren<MeshFilter>();
+            CombineInstance[] combine = new CombineInstance[meshFilters.Length];
+
+            int i = 0;
+            while (i < meshFilters.Length)
+            {
+                combine[i].mesh = meshFilters[i].sharedMesh;
+                combine[i].transform = meshFilters[i].transform.localToWorldMatrix;
+                meshFilters[i].gameObject.SetActive(false);
+
+                i++;
+            }
+            parent.transform.GetComponent<MeshFilter>().mesh = new Mesh();
+            parent.transform.GetComponent<MeshFilter>().mesh.CombineMeshes(combine);
+            // Add material
+            parent.GetComponent<Renderer>().material = isFloorOrRoof ? floorMaterial : wallMaterial;
+            // Add collider
+            parent.AddComponent<MeshCollider>();
+            
+            parent.transform.position = position;
+            parent.transform.gameObject.SetActive(true);
+        }
+
         private void CollectLightPositions(Node room)
         {
             Vector3 bottomLeftCorner = new Vector3(room.BottomLeftAreaCorner.x, 0, room.BottomLeftAreaCorner.y);
@@ -176,24 +234,31 @@ namespace Dungeon
             Vector3 topLeftCorner = new Vector3(room.TopLeftAreaCorner.x, 0, room.TopLeftAreaCorner.y);
             Vector3 topRightCorner = new Vector3(room.TopRightAreaCorner.x, 0, room.TopRightAreaCorner.y);
 
+            // Horizontal bottom
             for (var x = bottomLeftCorner.x; x <= bottomRightCorner.x; x++)
             {
                 var position = new Vector3(x, 0, bottomLeftCorner.z);
+                
                 SaveLightPosition(position, 0);
             }
             
+            // Horizontal top
             for (var x = topLeftCorner.x; x <= topRightCorner.x; x++)
             {
                 var position = new Vector3(x, 0, topLeftCorner.z);
+
                 SaveLightPosition(position, 180);
             }
-
+            
+            // Vertical left
             for (var z = bottomLeftCorner.z; z <= topLeftCorner.z; z++)
             {
                 var position = new Vector3(bottomLeftCorner.x, 0, z);
+
                 SaveLightPosition(position, 90);
             }
             
+            // Vertical right
             for (var z = bottomRightCorner.z; z <= topRightCorner.z; z++)
             {
                 var position = new Vector3(bottomRightCorner.x, 0, z);
@@ -468,7 +533,8 @@ namespace Dungeon
                 transform =
                 {
                     position = Vector3.zero,
-                    localScale = Vector3.one
+                    localScale = Vector3.one,
+                    parent = _wallParent.transform
                 }
             };
             
@@ -551,15 +617,18 @@ namespace Dungeon
                 triangles = triangles
             };
 
-            GameObject dungeonFloor = new GameObject("Dungeon Floor Mesh " + index, typeof(MeshFilter), typeof(MeshRenderer))
+            var parentTransform = isFloor ? _floorParent.transform : _roofParent.transform;
+            string dungeonMeshName = isFloor ? "Dungeon Floor " + index : "Dungeon Roof " + index;
+            GameObject dungeonFloor = new GameObject(dungeonMeshName, typeof(MeshFilter), typeof(MeshRenderer))
             {
                 transform =
                 {
                     position = Vector3.zero,
-                    localScale = Vector3.one
+                    localScale = Vector3.one,
+                    parent = parentTransform
                 }
             };
-            
+
             dungeonFloor.GetComponent<MeshFilter>().mesh = mesh;
             dungeonFloor.GetComponent<MeshRenderer>().material = material;
             dungeonFloor.gameObject.AddComponent<BoxCollider>();
