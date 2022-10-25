@@ -16,6 +16,7 @@ namespace Dungeon
         public int maxIterations;
         public int corridorWidth;
         public int dungeonHeight;
+        public int lightFrequency;
         public Material floorMaterial;
         public Material roofMaterial;
         public Material startRoomMaterial;
@@ -34,6 +35,7 @@ namespace Dungeon
         public GameObject torchPrefab;
         public List<GameObject> sceneryPrefabs;
 
+        private List<Vector3Int> _possibleLightPositions;
         private Dictionary<Vector3Int, int> _lightPositions;
         private List<Vector3Int> _ignoreLightPositions;
         private readonly List<GameObject> _dungeonFloors = new();
@@ -100,7 +102,7 @@ namespace Dungeon
                 }
             };
 
-
+            _possibleLightPositions = new List<Vector3Int>();
             _lightPositions = new Dictionary<Vector3Int, int>();
             _ignoreLightPositions = new List<Vector3Int>();
 
@@ -184,13 +186,15 @@ namespace Dungeon
             CombineMeshes(_roofParent, true);
             CombineMeshes(_wallParent, false);
 
+            
+            // Place lights
             foreach (var (position, rotation) in _lightPositions)
             {
                 PlaceLight(position, rotation);
             }
 
-            // Add random scenery to rooms
             /*
+            // Add random scenery to room
             for (int i = 0; i < listOfRooms.Count / 2; i++)
             {
                 PlaceRandomScenery(listOfRooms[i]);
@@ -218,6 +222,7 @@ namespace Dungeon
             }
             parent.transform.GetComponent<MeshFilter>().mesh = new Mesh();
             parent.transform.GetComponent<MeshFilter>().mesh.CombineMeshes(combine);
+            parent.isStatic = true;
             // Add material
             parent.GetComponent<Renderer>().material = isFloorOrRoof ? floorMaterial : wallMaterial;
             // Add collider
@@ -229,59 +234,130 @@ namespace Dungeon
 
         private void CollectLightPositions(Node room)
         {
-            Vector3 bottomLeftCorner = new Vector3(room.BottomLeftAreaCorner.x, 0, room.BottomLeftAreaCorner.y);
-            Vector3 bottomRightCorner = new Vector3(room.BottomRightAreaCorner.x, 0, room.BottomRightAreaCorner.y);
-            Vector3 topLeftCorner = new Vector3(room.TopLeftAreaCorner.x, 0, room.TopLeftAreaCorner.y);
-            Vector3 topRightCorner = new Vector3(room.TopRightAreaCorner.x, 0, room.TopRightAreaCorner.y);
+            var bottomLeftCorner = new Vector3(room.BottomLeftAreaCorner.x, 0, room.BottomLeftAreaCorner.y);
+            var bottomRightCorner = new Vector3(room.BottomRightAreaCorner.x, 0, room.BottomRightAreaCorner.y);
+            var topLeftCorner = new Vector3(room.TopLeftAreaCorner.x, 0, room.TopLeftAreaCorner.y);
+            var topRightCorner = new Vector3(room.TopRightAreaCorner.x, 0, room.TopRightAreaCorner.y);
+            
+            var horizontalBottomRotation = 0;
+            var horizontalTopRotation = 180;
+            var verticalLeftRotation = 90;
+            var verticalRightRotation = -90;
 
+            var horizontalBottomLength = bottomRightCorner.x - bottomLeftCorner.x;
+            var horizontalTopLength = topRightCorner.x - topLeftCorner.x;
+            var verticalLeftLength = topLeftCorner.z - bottomLeftCorner.z;
+            var verticalRightLength = topRightCorner.z - bottomRightCorner.z;
+            
             // Horizontal bottom
-            for (var x = bottomLeftCorner.x; x <= bottomRightCorner.x; x++)
+            bool isGettingLight = false;
+            int lightFrequencyTemp = lightFrequency;
+            int distancePerLight = (int)Math.Ceiling(horizontalBottomLength / lightFrequencyTemp);
+            int steps = 1;
+            
+            for (var x = (int)bottomLeftCorner.x; x <= (int)bottomRightCorner.x; x++)
             {
                 var position = new Vector3(x, 0, bottomLeftCorner.z);
                 
-                SaveLightPosition(position, 0);
+                if (x == (int)bottomLeftCorner.x + (distancePerLight * steps))
+                {
+                    steps++;
+                    isGettingLight = true;
+                }
+                
+                SaveLightPosition(position, horizontalBottomRotation, isGettingLight);
+                isGettingLight = false;
             }
             
             // Horizontal top
-            for (var x = topLeftCorner.x; x <= topRightCorner.x; x++)
+            lightFrequencyTemp = lightFrequency;
+            distancePerLight = (int)Math.Ceiling(horizontalTopLength / lightFrequencyTemp);
+            steps = 1;
+            
+            for (var x = (int)topLeftCorner.x; x <= (int)topRightCorner.x; x++)
             {
                 var position = new Vector3(x, 0, topLeftCorner.z);
 
-                SaveLightPosition(position, 180);
+                if (x == (int)topLeftCorner.x + (distancePerLight * steps))
+                {
+                    steps++;
+                    isGettingLight = true;
+                }
+                
+                SaveLightPosition(position, horizontalTopRotation, isGettingLight);
+                isGettingLight = false;
             }
             
             // Vertical left
-            for (var z = bottomLeftCorner.z; z <= topLeftCorner.z; z++)
+            lightFrequencyTemp = lightFrequency;
+            distancePerLight = (int)Math.Ceiling(verticalLeftLength / lightFrequencyTemp);
+            steps = 1;
+            
+            for (var z = (int)bottomLeftCorner.z; z <= (int)topLeftCorner.z; z++)
             {
                 var position = new Vector3(bottomLeftCorner.x, 0, z);
-
-                SaveLightPosition(position, 90);
+                if (z == (int)bottomLeftCorner.z + (distancePerLight * steps))
+                {
+                    steps++;
+                    isGettingLight = true;
+                }
+                
+                SaveLightPosition(position, verticalLeftRotation, isGettingLight);
+                isGettingLight = false;
             }
             
             // Vertical right
-            for (var z = bottomRightCorner.z; z <= topRightCorner.z; z++)
+            lightFrequencyTemp = lightFrequency;
+            distancePerLight = (int)Math.Ceiling(verticalRightLength / lightFrequencyTemp);
+            steps = 1;
+            
+            for (var z = (int)bottomRightCorner.z; z <= (int)topRightCorner.z; z++)
             {
                 var position = new Vector3(bottomRightCorner.x, 0, z);
-                SaveLightPosition(position, -90);
+                if (z == (int)bottomRightCorner.z + (distancePerLight * steps))
+                {
+                    steps++;
+                    isGettingLight = true;
+                }
+                SaveLightPosition(position, verticalRightRotation, isGettingLight);
+                isGettingLight = false;
             }
         }
 
-        private void SaveLightPosition(Vector3 position, int rotation)
+        /// <summary>
+        /// This method saves the positions and rotations of the lights.
+        /// </summary>
+        /// <param name="position">Contains the current position that will be checked</param>
+        /// <param name="rotation">Contains the rotation for the given point</param>
+        /// <param name="isGettingLight">Specifies if a light will be placed at this point</param>
+        private void SaveLightPosition(Vector3 position, int rotation, bool isGettingLight)
         {
-            // TODO: Don't choose every possible position to place lights
             Vector3Int point = Vector3Int.CeilToInt(position);
 
-            if (_lightPositions.ContainsKey(point))
+            if (_possibleLightPositions.Contains(point))
             {
-                _lightPositions.Remove(point);
+                _possibleLightPositions.Remove(point);
                 _ignoreLightPositions.Add(point);
+
+                if (_lightPositions.ContainsKey(point))
+                {
+                    _lightPositions.Remove(point);
+                }
             }
             else if(!_ignoreLightPositions.Contains(point))
             {
-                _lightPositions.Add(point, rotation);
+                _possibleLightPositions.Add(point);
+                if (isGettingLight)
+                {
+                    _lightPositions.Add(point, rotation);    
+                }
             }
         }
 
+        /// <summary>
+        /// TODO: Comment
+        /// </summary>
+        /// <param name="room"></param>
         private void PlaceRandomScenery(Node room)
         {
             int randomSceneryIndex = Random.Range(0, sceneryPrefabs.Count);
@@ -292,6 +368,11 @@ namespace Dungeon
             Instantiate(sceneryPrefabs[randomSceneryIndex], position, Quaternion.identity);
         }
 
+        /// <summary>
+        /// TODO: Comment
+        /// </summary>
+        /// <param name="lightPosition"></param>
+        /// <param name="rotation"></param>
         private void PlaceLight(Vector3Int lightPosition, int rotation)
         {
             lightPosition.y = dungeonHeight - 1;
@@ -305,6 +386,11 @@ namespace Dungeon
             lightSource.color = lightColor;
         }
 
+        /// <summary>
+        /// TODO: Comment
+        /// </summary>
+        /// <param name="room"></param>
+        /// <param name="rooms"></param>
         private void CreateWalls(Node room, List<Node> rooms)
         {
             // When collect vertices for a room check if any corridor has its corner points
@@ -430,6 +516,12 @@ namespace Dungeon
             }
         }
 
+        /// <summary>
+        /// TODO: Comment
+        /// </summary>
+        /// <param name="startCorner"></param>
+        /// <param name="endCorner"></param>
+        /// <returns></returns>
         private List<Vector3> CollectHorizontalWallVertices(Vector2Int startCorner, Vector2Int endCorner)
         {
             var vertices = new List<Vector3>();
@@ -462,6 +554,14 @@ namespace Dungeon
             return vertices;
         }
 
+        /// <summary>
+        /// This method creates the mesh for a wall for the given vertices
+        /// </summary>
+        /// <param name="vertices">Contains the vertices that will be connected with triangles</param>
+        /// <param name="startCorner">Contains the start corner to calculate the length</param>
+        /// <param name="endCorner">Contains the end corner to calculate the length</param>
+        /// <param name="isHorizontal">This boolean is a switch to use either x or z as direction</param>
+        /// <param name="isFlip">This boolean is a switch to flip the triangle creation so the walls are visible inside the room</param>
         private void CreateWallMesh(List<Vector3> vertices, Vector2Int startCorner, Vector2Int endCorner, 
             bool isHorizontal, bool isFlip)
         {
@@ -590,6 +690,7 @@ namespace Dungeon
                 uvs[i] = new Vector2(vertices[i].x, vertices[i].z);
             }
 
+            // Place triangles inverted if it is not the floor
             int[] triangles = new int[6];
             if (isFloor)
             {
@@ -617,6 +718,7 @@ namespace Dungeon
                 triangles = triangles
             };
 
+            // Assign right parent and name
             var parentTransform = isFloor ? _floorParent.transform : _roofParent.transform;
             string dungeonMeshName = isFloor ? "Dungeon Floor " + index : "Dungeon Roof " + index;
             GameObject dungeonFloor = new GameObject(dungeonMeshName, typeof(MeshFilter), typeof(MeshRenderer))
