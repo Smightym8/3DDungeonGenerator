@@ -4,6 +4,7 @@ using UnityEngine;
 using System.Diagnostics;
 using System.Linq;
 using Unity.AI.Navigation;
+using UnityEditor;
 using UnityEngine.AI;
 using Debug = UnityEngine.Debug;
 using Random = UnityEngine.Random;
@@ -216,7 +217,7 @@ namespace Dungeon
 
             /*
             // Add random scenery to room
-            for (int i = 0; i < listOfRooms.Count / 2; i++)
+            for (var i = 0; i < listOfRooms.Count / 2; i++)
             {
                 PlaceRandomScenery(listOfRooms[i]);
             }
@@ -461,10 +462,10 @@ namespace Dungeon
         }
 
         /// <summary>
-        /// TODO: Comment
+        /// This method places a prefab on the given position with the given rotation and adds a light source to it.
         /// </summary>
-        /// <param name="lightPosition"></param>
-        /// <param name="rotation"></param>
+        /// <param name="lightPosition">Contains the position for the light prefab</param>
+        /// <param name="rotation">Contains the rotation for the light prefab</param>
         private void PlaceLight(Vector3Int lightPosition, int rotation)
         {
             lightPosition.y = dungeonHeight - 1;
@@ -473,12 +474,39 @@ namespace Dungeon
             lightGameObject.transform.parent = _lightsParent.transform;
             lightGameObject.transform.Rotate(new Vector3(0, rotation, 0));
             lightGameObject.isStatic = true;
+
+            var lightSourceGameObject = new GameObject("LightSource")
+            {
+                transform =
+                {
+                    parent = lightGameObject.transform
+                }
+            };
+
+            var position = lightGameObject.transform.position;
+            switch (rotation)
+            {
+                case 0:
+                    lightSourceGameObject.transform.position = new Vector3(position.x, position.y - 0.5f, position.z + 1);
+                    break;
+                case 180:
+                    lightSourceGameObject.transform.position = new Vector3(position.x, position.y - 0.5f, position.z - 1);
+                    break;
+                case 90:
+                    lightSourceGameObject.transform.position = new Vector3(position.x + 1, position.y - 0.5f, position.z);
+                    break;
+                case -90:
+                    lightSourceGameObject.transform.position = new Vector3(position.x - 1, position.y - 0.5f, position.z);
+                    break;
+            }
             
-            Light lightSource = lightGameObject.AddComponent<Light>();
+            Light lightSource = lightSourceGameObject.AddComponent<Light>();
             lightSource.type = LightType.Point;
-            lightSource.intensity = 5;
+            lightSource.intensity = 2;
             lightSource.range = 3;
             lightSource.color = lightColor;
+            lightSource.renderMode = LightRenderMode.ForcePixel;
+            lightSource.lightmapBakeType = LightmapBakeType.Baked;
         }
 
         /// <summary>
@@ -835,7 +863,7 @@ namespace Dungeon
             return dungeonFloor;
         }
 
-
+        /*
         // For developing purpose to see if the points are on the correct position
         private void OnDrawGizmos()
         {
@@ -848,5 +876,6 @@ namespace Dungeon
                 Gizmos.DrawSphere(point, 0.1f);
             }
         }
+        */
     }    
 }

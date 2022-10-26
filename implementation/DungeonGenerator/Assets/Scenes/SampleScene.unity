@@ -324,7 +324,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 279191908}
-  m_LocalRotation: {x: 0.20625494, y: -0.000000019448535, z: 0.0000000040995025, w: 0.97849834}
+  m_LocalRotation: {x: 0.20625491, y: 0.00000004797682, z: -0.000000010112899, w: 0.9784983}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -372,7 +372,7 @@ MonoBehaviour:
   maxIterations: 60
   corridorWidth: 4
   dungeonHeight: 4
-  lightFrequency: 5
+  lightFrequency: 4
   floorMaterial: {fileID: 2100000, guid: d6c86796e41109349916ebb4500273ee, type: 2}
   roofMaterial: {fileID: 2100000, guid: d6c86796e41109349916ebb4500273ee, type: 2}
   startRoomMaterial: {fileID: 2100000, guid: d6c86796e41109349916ebb4500273ee, type: 2}
@@ -960,7 +960,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1477826468}
-  m_LocalRotation: {x: 0.17057492, y: -0, z: -0, w: 0.98534477}
+  m_LocalRotation: {x: 0.17057492, y: 1e-45, z: -0, w: 0.98534477}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -1038,7 +1038,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1624330194}
-  m_LocalRotation: {x: 0.18842243, y: -2.0522938e-37, z: 8.485493e-38, w: 0.9820881}
+  m_LocalRotation: {x: 0.18842243, y: -1e-45, z: -0, w: 0.9820881}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
