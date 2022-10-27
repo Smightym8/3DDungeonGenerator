@@ -148,7 +148,7 @@ namespace Enemy
             animator.SetBool(IsAttacked, true);
             _isAttacked = true;
             
-            //StartAttacking();
+            StartAttacking();
         }
 
         private void StartAttacking()
@@ -172,9 +172,8 @@ namespace Enemy
             
             if (distance < 2)
             {
-                var health = FindObjectOfType<PlayerMovement>().GetComponentInChildren<Health>(); 
-                // TODO: Enable damage again
-                //health.maxHealth -= 10;
+                var health = FindObjectOfType<PlayerMovement>().GetComponentInChildren<Health>();
+                health.maxHealth -= 10;
             }
         }
 

@@ -1,5 +1,5 @@
-\documentclass[a4paper,12pt,oneside]{scrreprt}
-%% Pakete:
+\documentclass[a4paper,11pt,oneside]{scrreprt}
+%% Packages:
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}    
 \usepackage{graphicx}       
@@ -7,7 +7,6 @@
 \usepackage{csquotes} 
 \usepackage{eurosym}
 \usepackage[linktocpage=true]{hyperref} 
-\usepackage[bindingoffset=8mm]{geometry}
 \usepackage{caption}
 \usepackage[onehalfspacing]{setspace}
 \usepackage{minted}
@@ -15,13 +14,15 @@
 \usepackage[style=apa,citestyle=apa,backend=biber]{biblatex}
 \addbibresource{Zotero.bib}
 
-%% Einstellungen:
+%% Settings:
 \setcounter{secnumdepth}{4}
-\setcounter{tocdepth}{4}   % Tiefe der Gliederung im Inhaltsverzeichnis
+\setcounter{tocdepth}{4}
 \captionsetup{format=hang, justification=raggedright}
 \setlength{\parindent}{0pt}
 
 \begin{document}
+\nocite{*}
+
 \thispagestyle{empty}
 \begin{titlepage}
   \begin{flushright}
@@ -38,7 +39,7 @@
   \vspace{0.5cm}
 
   Michael Spiegel\newline
-  04.10.2022
+  \today
   \end{flushleft}
 \end{titlepage}
 
@@ -47,7 +48,9 @@
 
 % Content:
 \chapter{Introduction}
-For my research project I chose a 3D dungeon generator that should generate a new dungeon every time the game is started. Furthermore, I decided to make it possible to walk through the dungeon. For this I want to add a player that will be placed in a randomly chosen start room. To make the whole dungeon more interesting and not leave it as an empty place, I plan to add some scenery like torches. Additionally the dungeon should also contain enemies for which I try to implement a combat system. The focus lies on a performant generation of the dungeon and on the look. As a combat system can take much time to implement and needs a lot of testing it could be possible throughout the project that I will put more effort in the dungeon itself. For this I would then only implement a player to walk through the dungeon. Through this project I want to understand how the algorithms work that are used for dungeon generation. Furthermore, I want to get knowledge about combat systems in games.
+For my research project I chose a 3D dungeon generator that should generate a new dungeon every time the game is started. Furthermore, I decided to make it possible to walk through the dungeon. For this I want to add a player that will be placed in a randomly chosen start room. To make the whole dungeon more interesting and not leave it as an empty place, I plan to add some scenery like torches. Additionally the dungeon should also contain enemies for which I try to implement a combat system. The focus lies mainly on the visuals of the dungeon but the performance should also be good enough so that it can run with 60 FPS on average hardware. As a combat system can take much time to implement and needs a lot of testing it could be possible throughout the project that I will put more effort in the dungeon itself. Through this project I want to understand how the algorithms work that are used for dungeon generation. Furthermore, I want to get knowledge about combat systems in games.\\
+\\
+The whole project can be found on \href{https://github.com/Smightym8/3DDungeonGenerator}{GitHub}.
 
 \chapter{Research}
 
@@ -89,43 +92,97 @@ Source: \cite[][]{williams_investigation_nodate}
 \label{fig:delaunay_example}
 \end{figure}
 
+\newpage
 \section{Comparison of the algorithms}
 Now let's compare those algorithms to explain which one fits best for the purpose of this project. The cellular automata algorithm generates more cave like dungeons which is not applicable to the goal of this project. The dungeon should consist of rooms which only the binary space partition and the delaunay triangulation algorithm provides. 
 \\
-\\
 To compare those two algorithms let's have a look on the performance. Figure \ref{fig:bsp_performance} shows the performance of the binary space partitioning algorithm. This algorithm is slow when less rooms are used for the dungeon but has its strength in the generation of more complex dungeons that consists of a huge amount of rooms.  
 \begin{figure}[htb]
-\centering
-\includegraphics[scale=0.5]{images/bsp_performance.png} 
-\caption{Performance of the Binary Space Partitioning algorithm}
-Source: \cite[][]{williams_investigation_nodate}
-\label{fig:bsp_performance}
+	\centering
+	\includegraphics[scale=0.5]{images/bsp_performance.png} 
+	\caption{Performance of the Binary Space Partitioning algorithm}
+	Source: \cite[][]{williams_investigation_nodate}
+	\label{fig:bsp_performance}
 \end{figure}
 
-Figure \ref{fig:delaunay_performance} show that compared to the other algorithm the delaunay triangulation algorithm is faster when it comes to dungeons with less rooms. On the other side this algorithm gets slower with the increasing amount of rooms. This means, that this algorithm fits best if the dungeon will only consist of a few rooms.
+\newpage
+Figure \ref{fig:delaunay_performance} shows that compared to the other algorithm the delaunay triangulation algorithm is faster when it comes to dungeons with less rooms. On the other side this algorithm gets slower with the increasing amount of rooms. This means, that this algorithm fits best if the dungeon will only consist of a few rooms.
 \begin{figure}[htb]
-\centering
-\includegraphics[scale=0.5]{images/delaunay_performance.png} 
-\caption{Performance of the Delaunay Triangulation algorithm}
-Source: \cite[][]{williams_investigation_nodate}
-\label{fig:delaunay_performance}
+	\centering
+	\includegraphics[scale=0.5]{images/delaunay_performance.png} 
+	\caption{Performance of the Delaunay Triangulation algorithm}
+	Source: \cite[][]{williams_investigation_nodate}
+	\label{fig:delaunay_performance}
 \end{figure}
 
 \chapter{Implementation}
+In the following sections it is shown how the generation of the dungeon has been implemented.
 \section{Dungeon Generator}
-\subsection{Creating rooms}
-\subsection{Adding corridors}
-\subsection{Adding walls}
+\subsection{Creating floor and roof}
+To create the floors the BSP algorithm is used. Before creating the meshes we need to collect all the nodes and put them in the tree structure. For this, the whole space is at first divided into two spaces and then those two are divided into another two. Each space is a node and saved in the tree structure. To decide when the space has to be divided I added a minimum and maximum for the length and width of each room. To represent the tree structure I used a queue and a list for the rooms. When a node is not between the minimum and maximum values that space will be split and the two new nodes are added to the queue and list. The orientation of the room is selected randomly or based on the length and width of the room. So not all rooms are horizontal or vertical.
+\\
+After collection all the nodes, we have to find all the lowest leafs because those have to be drawn as rooms. To find them the tree is traversed until the lowest leaves are reached. Each room node has two corner points and the other two can be calculated with the help of the existing ones. 
+\\
+To finally create a mesh for each room we have to loop through all the room nodes. The same nodes can also be used for the roof because it is the same with a different height. As you can see the creation of the triangles is also different. As each room is a rectangle with four corners we can draw two triangles to get a rectangle mesh.
+
+\newpage
+To create the corridors each node is connected with its neighbour node. The corridors nodes are handled like room nodes and therefore also stored in the same list that we use to iterate over. The mesh creation is also the same.
+\inputminted[fontsize=\footnotesize,linenos]{csharp}{code/CreateFloorRoof.cs}
+
 \subsection{Determining Start and end room}
-\subsection{Adding Scenery}
+To find the start room it is not much work necessary. I only check the index while iterating over the list of rooms and choose the first created room as start room. 
+\inputminted[fontsize=\footnotesize,linenos]{csharp}{code/StartRoom.cs}
+
+For the end room I thought about which rooms could be end rooms and I think the best case is when the end room is not too near to the start room. For this I calculate the distance between each room and the start room. The room that is the furthest away will be the end room.
+\inputminted[fontsize=\footnotesize,linenos]{csharp}{code/EndRoom.cs}
+
+\subsection{Creating walls}
+The creation of the rooms got a bit complicated because of the corridors. For each side of the room it is checked if the corners of the corridor are between the corners of that side of the room. If that is the case, the wall has to be divided into two walls. The corners of the corridor act then once as end point and once as start point for the two walls. 
+\\
+If there is no corridor the wall can be created for the whole length of that room side. The corridors only get walls on two sides so they are open to walk through. 
+\inputminted[fontsize=\footnotesize,linenos]{csharp}{code/CreateWalls1.cs}
+
+Before creating the mesh it is necessary to get the positions of the vertices. This works like the creation of a plane but instead of creating it flat, it has to be created into the y direction. Depending on the direction of the wall it will be created into the x and y direction or the z and y direction. Horizontal walls use the x direction and vertical walls the z direction. 
+\inputminted[fontsize=\footnotesize,linenos]{csharp}{code/CreateWalls2.cs}
+
+\newpage
+Creating the mesh is very simple. The only difference compared to a plane in this case is, that I have to check if it is a horizontal or vertical wall for the calculation of the length. It is also important to flip the creation of the vertices. All walls have to be visible from the inside of the rooms and therefore the triangles can not be created clock wise or counter clockwise for all walls.
+\inputminted[fontsize=\footnotesize,linenos]{csharp}{code/CreateWalls3.cs}
+
+\subsection{Lighting}
+To get the positions for the lights the length of the wall is calculated and divided by the frequency of the lights. With the help of steps it will be decided if that position is used for the lights. 
+\inputminted[fontsize=\footnotesize,linenos]{csharp}{code/Lights1.cs}
+
+As positions can occur multiple times because of overlapping between walls, It is checked if a point is already in the list for the possible positions. If that is the case the position will be removed and added to another list to ignore that positions in the future. To keep track over all points I used two lists, one for the possible positions and one list for the actual positions. For the actual positions it depends if isGettingLight is true. Additionally to the position the rotation is added so the light prefabs are all facing inside the room. To store this data I used a Dictionary. 
+\inputminted[fontsize=\footnotesize,linenos]{csharp}{code/Lights2.cs}
+
+\subsection{Combining meshes}
+This method is from the \href{https://docs.unity3d.com/ScriptReference/Mesh.CombineMeshes.html}{Unity documentation}. It is slightly modified and uses a parent as input parameter and a boolean to check if it is a wall or a floor/roof. 
+\\
+Depending on the boolean it assigns the appropriate material and layer. The layer is needed for the third person camera of the player. Furthermore the mesh collider is added after combining the meshes.
+\inputminted[fontsize=\footnotesize,linenos]{csharp}{code/CombineMeshes.cs}
+
+%\subsection{Placing scenery}
 
 \section{Combat system}
-\subsection{Player Movement}
-\subsection{Enemy Movement}
+I implemented a prototype for the combat system and asked my classmates and friends if they can test it and give me feedback. As the combat system was not matching my criteria to prevent the player from running through the dungeon and ignoring the visuals I decided to not put further work in it. The feedback was also not that good because a combat system needs much work and the focus during my project is not about the combat system. Nevertheless I want to show how I implemented my prototype.
+\subsection{Player}
+The player can start to attack with clicking the left mouse button. If the player attacks an enemy it will call a method of the script health that is attached to the enemy. The enemy will then start attacking the player. It is also possible that the enemy attacks the player without being attacked by the player before. 
+\inputminted[fontsize=\footnotesize,linenos]{csharp}{code/Player.cs}
 
-\chapter{Conclusion and Reflection}
+\subsection{Enemy}
+The enemy has three states:
+\begin{enumerate}
+\item Patroling
+\item Chasing
+\item Attacking
+\end{enumerate}
 
+In the first state, the enemy is walking around to a random destination point within the navigation mesh. The enemy enters the second state when the player is in a specific range and starts running towards the player. After the enemy reached the player the attacking state is activated and the enemy starts attacking.
+\inputminted[fontsize=\footnotesize,linenos]{csharp}{code/Enemy.cs}
 
+%\section{Memory game mechanic}
+%\chapter{Conclusion and Reflection}
 
 % List of Figures:
 \clearpage
@@ -138,5 +195,4 @@ Source: \cite[][]{williams_investigation_nodate}
 \phantomsection
 \addcontentsline{toc}{chapter}{Bibliography}
 \printbibliography
-
 \end{document}

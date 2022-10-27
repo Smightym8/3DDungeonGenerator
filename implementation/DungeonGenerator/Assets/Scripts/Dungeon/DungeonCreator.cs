@@ -518,7 +518,6 @@ namespace Dungeon
         {
             // When collect vertices for a room check if any corridor has its corner points
             // in the range of the wall
-
             List<Vector3> vertices;
 
             bool isCorridorBetweenHorizontalBottom = false;
@@ -649,6 +648,7 @@ namespace Dungeon
         {
             var vertices = new List<Vector3>();
             
+            // Start in one corner of the room and go the the other corner of the room
             for (var height = 0; height <= dungeonHeight; height++)
             {
                 for (var x = startCorner.x; x <= endCorner.x; x++)
@@ -763,7 +763,6 @@ namespace Dungeon
             
             wall.GetComponent<MeshFilter>().mesh = mesh;
             wall.GetComponent<MeshRenderer>().material = wallMaterial;
-            // TODO: Add collider
             wall.layer = Layer.WallLayer;
             wall.isStatic = true;
         }
