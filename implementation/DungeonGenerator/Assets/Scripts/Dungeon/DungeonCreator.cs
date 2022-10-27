@@ -183,7 +183,7 @@ namespace Dungeon
             {
                 endRoom.GetComponent<MeshRenderer>().material = endRoomMaterial;    
             }
-
+            
             // Create the roof
             foreach (var (room, index) in listOfRooms.Select((room, index) => ( room, index )))
             {
@@ -198,7 +198,8 @@ namespace Dungeon
                     )
                 );
             }
-
+            
+          
             foreach (var room in listOfRooms)
             {
                 CreateWalls(room, listOfRooms);

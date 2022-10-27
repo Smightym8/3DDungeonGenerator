@@ -29,7 +29,7 @@
   \includegraphics[width=0.3\linewidth]{images/Hogeschool_van_amsterdam_logo.svg}
   \end{flushright}
   \begin{flushleft}
-  \section*{R\&D Assignment}
+  \section*{Research \& Development Project}
   \subsection*{3D Dungeon Generator}
 
   \vspace{1cm}
@@ -129,6 +129,14 @@ To finally create a mesh for each room we have to loop through all the room node
 To create the corridors each node is connected with its neighbour node. The corridors nodes are handled like room nodes and therefore also stored in the same list that we use to iterate over. The mesh creation is also the same.
 \inputminted[fontsize=\footnotesize,linenos]{csharp}{code/CreateFloorRoof.cs}
 
+\begin{figure}[htb]
+	\centering
+	\includegraphics[scale=0.5]{images/dungeon_floor_and_roof.png}  
+	\caption{Floor and roof of the dungeon}
+	\label{fig:floor-roof}
+\end{figure}
+
+\newpage
 \subsection{Determining Start and end room}
 To find the start room it is not much work necessary. I only check the index while iterating over the list of rooms and choose the first created room as start room. 
 \inputminted[fontsize=\footnotesize,linenos]{csharp}{code/StartRoom.cs}
@@ -136,10 +144,17 @@ To find the start room it is not much work necessary. I only check the index whi
 For the end room I thought about which rooms could be end rooms and I think the best case is when the end room is not too near to the start room. For this I calculate the distance between each room and the start room. The room that is the furthest away will be the end room.
 \inputminted[fontsize=\footnotesize,linenos]{csharp}{code/EndRoom.cs}
 
+\begin{figure}[htb]
+	\centering
+	\includegraphics[scale=0.7]{images/start_end_room.png}   
+	\caption{Start room (blue) and end room (red)}
+	\label{fig:start-end-room}
+\end{figure}
+
 \subsection{Creating walls}
 The creation of the rooms got a bit complicated because of the corridors. For each side of the room it is checked if the corners of the corridor are between the corners of that side of the room. If that is the case, the wall has to be divided into two walls. The corners of the corridor act then once as end point and once as start point for the two walls. 
 \\
-If there is no corridor the wall can be created for the whole length of that room side. The corridors only get walls on two sides so they are open to walk through. 
+If there is no corridor the wall can be created for the whole length of that room side. The corridors only get walls on two sides so they are open to walk through.
 \inputminted[fontsize=\footnotesize,linenos]{csharp}{code/CreateWalls1.cs}
 
 Before creating the mesh it is necessary to get the positions of the vertices. This works like the creation of a plane but instead of creating it flat, it has to be created into the y direction. Depending on the direction of the wall it will be created into the x and y direction or the z and y direction. Horizontal walls use the x direction and vertical walls the z direction. 
@@ -149,12 +164,26 @@ Before creating the mesh it is necessary to get the positions of the vertices. T
 Creating the mesh is very simple. The only difference compared to a plane in this case is, that I have to check if it is a horizontal or vertical wall for the calculation of the length. It is also important to flip the creation of the vertices. All walls have to be visible from the inside of the rooms and therefore the triangles can not be created clock wise or counter clockwise for all walls.
 \inputminted[fontsize=\footnotesize,linenos]{csharp}{code/CreateWalls3.cs}
 
+\begin{figure}[htb]
+	\centering
+	\includegraphics[scale=0.7]{images/walls.png}   
+	\caption{Walls of the dungeon}
+	\label{fig:walls}
+\end{figure}
+
 \subsection{Lighting}
 To get the positions for the lights the length of the wall is calculated and divided by the frequency of the lights. With the help of steps it will be decided if that position is used for the lights. 
 \inputminted[fontsize=\footnotesize,linenos]{csharp}{code/Lights1.cs}
 
 As positions can occur multiple times because of overlapping between walls, It is checked if a point is already in the list for the possible positions. If that is the case the position will be removed and added to another list to ignore that positions in the future. To keep track over all points I used two lists, one for the possible positions and one list for the actual positions. For the actual positions it depends if isGettingLight is true. Additionally to the position the rotation is added so the light prefabs are all facing inside the room. To store this data I used a Dictionary. 
 \inputminted[fontsize=\footnotesize,linenos]{csharp}{code/Lights2.cs}
+
+\begin{figure}[htb]
+	\centering
+	\includegraphics[scale=0.5]{images/lights.png}   
+	\caption{Lights in the dungeon}
+	\label{fig:lights}
+\end{figure}
 
 \subsection{Combining meshes}
 This method is from the \href{https://docs.unity3d.com/ScriptReference/Mesh.CombineMeshes.html}{Unity documentation}. It is slightly modified and uses a parent as input parameter and a boolean to check if it is a wall or a floor/roof. 
