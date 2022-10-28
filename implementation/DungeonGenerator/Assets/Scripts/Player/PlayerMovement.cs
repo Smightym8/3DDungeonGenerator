@@ -16,11 +16,9 @@ public class PlayerMovement : MonoBehaviour
     
     private bool _isMoving;
     private bool _isRunning;
-    private bool _isAttacking;
-    
+
     private static readonly int IsWalking = Animator.StringToHash("isWalking");
     private static readonly int IsRunning = Animator.StringToHash("isRunning");
-    private static readonly int IsAttacking = Animator.StringToHash("isAttacking");
 
     private void Awake()
     {
@@ -35,7 +33,7 @@ public class PlayerMovement : MonoBehaviour
         Vector3 direction = new Vector3(horizontal, 0, vertical).normalized;
 
         // Move
-        if ((direction.magnitude >= 0.1) && !_isAttacking)
+        if (direction.magnitude >= 0.1)
         {
             _isMoving = true;
             _moveDirection = direction;
@@ -47,9 +45,8 @@ public class PlayerMovement : MonoBehaviour
             animator.SetBool(IsWalking, false);
         }
         
-        
         // Run
-        if (Input.GetKeyDown(KeyCode.LeftShift) && !_isAttacking)
+        if (Input.GetKeyDown(KeyCode.LeftShift))
         {
             _isRunning = true;
             animator.SetBool(IsRunning, true);
@@ -59,13 +56,6 @@ public class PlayerMovement : MonoBehaviour
         {
             _isRunning = false;
             animator.SetBool(IsRunning, false);
-        }
-
-        // Attack
-        if (Input.GetKeyDown(KeyCode.Mouse0) && !_isMoving)
-        {
-            _isAttacking = true;
-            animator.SetBool(IsAttacking, true);
         }
     }
 
@@ -85,8 +75,7 @@ public class PlayerMovement : MonoBehaviour
 
             var moveDirection = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
             Vector3 currentPos = _rigidbody.position;
-            _rigidbody.MovePosition(currentPos + moveDirection.normalized * (_currentSpeed * Time.deltaTime)); 
-            //player.Move(moveDirection.normalized * (_currentSpeed * Time.deltaTime));
+            _rigidbody.MovePosition(currentPos + moveDirection.normalized * (_currentSpeed * Time.deltaTime));
         }
 
         if (_isMoving && _isRunning)
@@ -97,27 +86,6 @@ public class PlayerMovement : MonoBehaviour
         if (!_isRunning)
         {
             _currentSpeed = walkingSpeed;
-        }
-    }
-
-    private void Attack()
-    {
-        animator.SetBool(IsAttacking, false);
-        _isAttacking = false;
-
-        var healthsFound = FindObjectsOfType<Health>();
-
-        foreach (var health in healthsFound)
-        {
-            if (!health.gameObject.tag.Equals(Tag.Enemy)) continue;
-            
-            float distance = Vector3.Distance(transform.position, health.gameObject.transform.position);
-            
-            if (distance < 2)
-            {
-                health.maxHealth -= 10;
-                health.ActivateAttacking();
-            }
         }
     }
 }

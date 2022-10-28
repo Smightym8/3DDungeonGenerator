@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Diagnostics;
 using System.Linq;
-using Unity.AI.Navigation;
-using UnityEditor;
-using UnityEngine.AI;
+using General;
 using Debug = UnityEngine.Debug;
 using Random = UnityEngine.Random;
 
@@ -37,11 +35,6 @@ namespace Dungeon
         public GameObject playerPrefab;
         public GameObject torchPrefab;
         public List<GameObject> sceneryPrefabs;
-        
-        public List<GameObject> enemyPrefabs;
-        public List<RuntimeAnimatorController> enemyAnimators;
-        public List<Avatar> enemyAvatars;
-        private GameObject _navMeshRoot;
 
         private List<Vector3Int> _possibleLightPositions;
         private Dictionary<Vector3Int, int> _lightPositions;
@@ -49,18 +42,7 @@ namespace Dungeon
         private readonly List<GameObject> _dungeonFloors = new();
         private GameObject _floorParent, _roofParent, _wallParent, _lightsParent;
 
-        // TODO: Move to appropriate method
-        private int[] _triangles;
-        private Vector2[] _uvCoordinates;
-
         // Unity Methods
-        private void Awake () {
-            if (_navMeshRoot == null)
-            {
-                _navMeshRoot = new GameObject("NavMeshRoot");
-            }
-        }
-        
         private void Start()
         {
             var sw = new Stopwatch();
@@ -198,11 +180,11 @@ namespace Dungeon
                     )
                 );
             }
-            
-          
+
+            var corridors = listOfRooms.GetRange(listOfRooms.Count / 2 + 1, listOfRooms.Count / 2 - 1);
             foreach (var room in listOfRooms)
             {
-                CreateWalls(room, listOfRooms);
+                CreateWalls(room, corridors);
                 CollectLightPositions(room);
             }
             
@@ -222,79 +204,11 @@ namespace Dungeon
             {
                 PlaceRandomScenery(listOfRooms[i]);
             }
-            
-            BuildNavMesh();
-            SpawnEnemy(enemyPrefabs[0], enemyAnimators[0], enemyAvatars[0], (RoomNode) listOfRooms[1]);
             */
             
             SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
         }
         
-        private void BuildNavMesh() {
-            int agentTypeCount = NavMesh.GetSettingsCount();
-            if (agentTypeCount < 1) { return; }
-
-            for (int i = 0; i < _dungeonFloors.Count; ++i)
-            {
-                _dungeonFloors[i].transform.SetParent(_navMeshRoot.transform, true);
-            }
-        
-            for (int i = 0; i < agentTypeCount; ++i) {
-                NavMeshBuildSettings settings = NavMesh.GetSettingsByIndex(i);
-                NavMeshSurface navMeshSurface = gameObject.AddComponent<NavMeshSurface>();
-                navMeshSurface.agentTypeID = settings.agentTypeID;
-     
-                navMeshSurface.GetBuildSettings();
-                navMeshSurface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
-     
-                navMeshSurface.BuildNavMesh();
-            }
-        }
-        
-        /// <summary>
-        /// This method spawns an enemy in a given room
-        /// </summary>
-        /// <param name="enemy">Contains the prefab of the enemy</param>
-        /// <param name="animatorController">Contains the controller that will be used for the animations of the enemy</param>
-        /// <param name="avatar">Contains the avatar that is needed for the animations</param>
-        /// <param name="room">Contains the room where the enemy will be spawned</param>
-        private void SpawnEnemy(GameObject enemy, RuntimeAnimatorController animatorController, Avatar avatar, RoomNode room)
-        {
-            var spawnPosition = room.CentrePoint;
-            spawnPosition.y = 0.02f;
-
-            var instantiatedEnemy = Instantiate(enemy);
-            instantiatedEnemy.transform.position = spawnPosition;
-            
-            // Add animation controller to instantiated enemy
-            //instantiatedEnemy.AddComponent<Animator>();
-            Animator animator = instantiatedEnemy.GetComponent<Animator>();
-            animator.runtimeAnimatorController = animatorController;
-            animator.avatar = avatar;
-
-            // Add Rigidbody
-            instantiatedEnemy.AddComponent<Rigidbody>();
-            var rigidBody = instantiatedEnemy.GetComponent<Rigidbody>();
-            rigidBody.isKinematic = true;
-            
-            // Add Collider
-            instantiatedEnemy.AddComponent<CapsuleCollider>();
-            
-            // Add NavMeshAgent
-            instantiatedEnemy.AddComponent<NavMeshAgent>();
-
-            // Add scripts
-            instantiatedEnemy.AddComponent<Enemy.EnemyMovement>();
-            instantiatedEnemy.AddComponent<Health>();
-            
-            // Assign animator to enemy movement script
-            var enemyMovementScript = instantiatedEnemy.GetComponent<Enemy.EnemyMovement>();
-            enemyMovementScript.animator = animator;
-            
-            // Add tag
-            instantiatedEnemy.tag = Tag.Enemy;
-        }
-
         private void CombineMeshes(GameObject parent, bool isFloorOrRoof)
         {
             Vector3 position = parent.transform.position;
@@ -511,30 +425,29 @@ namespace Dungeon
         }
 
         /// <summary>
-        /// TODO: Comment
+        /// This method is the entry method to create all walls for one room. It calls the appropriate methods
+        /// to collect the vertices and to create the mesh.
         /// </summary>
-        /// <param name="room"></param>
-        /// <param name="rooms"></param>
-        private void CreateWalls(Node room, List<Node> rooms)
+        /// <param name="room">Contains the room for which the walls will be created</param>
+        /// <param name="corridors">Contains the corridors to check if a wall has to be splitted</param>
+        private void CreateWalls(Node room, List<Node> corridors)
         {
             // When collect vertices for a room check if any corridor has its corner points
             // in the range of the wall
             List<Vector3> vertices;
 
-            bool isCorridorBetweenHorizontalBottom = false;
-            bool isCorridorBetweenHorizontalTop = false;
-            bool isCorridorBetweenVerticalLeft = false;
-            bool isCorridorBetweenVerticalRight = false;
+            var isCorridorBetweenHorizontalBottom = false;
+            var isCorridorBetweenHorizontalTop = false;
+            var isCorridorBetweenVerticalLeft = false;
+            var isCorridorBetweenVerticalRight = false;
             
             // Split wall into two walls
             // Check if there is a corridor between the start and endpoint of the wall
             // But only if it is a room and no corridor
             if (!room.IsCorridor)
             {
-                for (var i = (rooms.Count / 2 + 1); i < rooms.Count; i++)
+                foreach (var corridor in corridors)
                 {
-                    Node corridor = rooms[i];
-
                     // Bottom horizontal wall
                     if (corridor.TopLeftAreaCorner.y == room.BottomLeftAreaCorner.y &&
                         room.BottomLeftAreaCorner.x < corridor.TopLeftAreaCorner.x &&
@@ -598,7 +511,7 @@ namespace Dungeon
                         vertices = CollectVerticalWallVertices(corridor.TopLeftAreaCorner, room.TopRightAreaCorner);
                         CreateWallMesh(vertices, corridor.TopLeftAreaCorner, room.TopRightAreaCorner, false, true);
                     }
-                }    
+                }
             }
             
             // Create walls normal as one wall
@@ -639,11 +552,12 @@ namespace Dungeon
             }
         }
 
+        // TODO: Merge Collect wall vertices methods
         /// <summary>
-        /// TODO: Comment
+        /// This method collects the vertices for horizontal walls.
         /// </summary>
-        /// <param name="startCorner"></param>
-        /// <param name="endCorner"></param>
+        /// <param name="startCorner">Contains the start point</param>
+        /// <param name="endCorner">Contains the end point</param>
         /// <returns></returns>
         private List<Vector3> CollectHorizontalWallVertices(Vector2Int startCorner, Vector2Int endCorner)
         {
@@ -662,6 +576,12 @@ namespace Dungeon
             return vertices;
         }
         
+        /// <summary>
+        /// This method collects the vertices for vertical walls.
+        /// </summary>
+        /// <param name="startCorner">Contains the start point</param>
+        /// <param name="endCorner">Contains the end point</param>
+        /// <returns></returns>
         private List<Vector3> CollectVerticalWallVertices(Vector2Int startCorner, Vector2Int endCorner)
         {
             var vertices = new List<Vector3>();
