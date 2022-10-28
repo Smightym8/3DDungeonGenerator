@@ -457,10 +457,10 @@ namespace Dungeon
                     {
                         isCorridorBetweenHorizontalBottom = true;
 
-                        vertices = CollectHorizontalWallVertices(room.BottomLeftAreaCorner, corridor.TopLeftAreaCorner);
+                        vertices = CollectWallVertices(room.BottomLeftAreaCorner, corridor.TopLeftAreaCorner, true);
                         CreateWallMesh(vertices, room.BottomLeftAreaCorner, corridor.TopLeftAreaCorner, true,true);
                         
-                        vertices = CollectHorizontalWallVertices(corridor.TopRightAreaCorner, room.BottomRightAreaCorner);
+                        vertices = CollectWallVertices(corridor.TopRightAreaCorner, room.BottomRightAreaCorner, true);
                         CreateWallMesh(vertices, corridor.TopRightAreaCorner, room.BottomRightAreaCorner, true, true);
                     }
                     
@@ -473,10 +473,10 @@ namespace Dungeon
                     {
                         isCorridorBetweenHorizontalTop = true;
 
-                        vertices = CollectHorizontalWallVertices(room.TopLeftAreaCorner, corridor.BottomLeftAreaCorner);
+                        vertices = CollectWallVertices(room.TopLeftAreaCorner, corridor.BottomLeftAreaCorner, true);
                         CreateWallMesh(vertices, room.TopLeftAreaCorner, corridor.BottomLeftAreaCorner, true,false);
                         
-                        vertices = CollectHorizontalWallVertices(corridor.BottomRightAreaCorner, room.TopRightAreaCorner);
+                        vertices = CollectWallVertices(corridor.BottomRightAreaCorner, room.TopRightAreaCorner, true);
                         CreateWallMesh(vertices, corridor.BottomRightAreaCorner, room.TopRightAreaCorner, true, false);
                     }
                     
@@ -489,10 +489,10 @@ namespace Dungeon
                     {
                         isCorridorBetweenVerticalLeft = true;
                         
-                        vertices = CollectVerticalWallVertices(room.BottomLeftAreaCorner, corridor.BottomRightAreaCorner);
+                        vertices = CollectWallVertices(room.BottomLeftAreaCorner, corridor.BottomRightAreaCorner, false);
                         CreateWallMesh(vertices, room.BottomLeftAreaCorner, corridor.BottomRightAreaCorner, false,false);
                         
-                        vertices = CollectVerticalWallVertices(corridor.TopRightAreaCorner, room.TopLeftAreaCorner);
+                        vertices = CollectWallVertices(corridor.TopRightAreaCorner, room.TopLeftAreaCorner, false);
                         CreateWallMesh(vertices, corridor.TopRightAreaCorner, room.TopLeftAreaCorner, false, false);
                     }
                     
@@ -505,10 +505,10 @@ namespace Dungeon
                     {
                         isCorridorBetweenVerticalRight = true;
                         
-                        vertices = CollectVerticalWallVertices(room.BottomRightAreaCorner, corridor.BottomLeftAreaCorner);
+                        vertices = CollectWallVertices(room.BottomRightAreaCorner, corridor.BottomLeftAreaCorner, false);
                         CreateWallMesh(vertices, room.BottomRightAreaCorner, corridor.BottomLeftAreaCorner, false,true);
                         
-                        vertices = CollectVerticalWallVertices(corridor.TopLeftAreaCorner, room.TopRightAreaCorner);
+                        vertices = CollectWallVertices(corridor.TopLeftAreaCorner, room.TopRightAreaCorner, false);
                         CreateWallMesh(vertices, corridor.TopLeftAreaCorner, room.TopRightAreaCorner, false, true);
                     }
                 }
@@ -521,14 +521,14 @@ namespace Dungeon
                 // Bottom horizontal wall
                 if (!isCorridorBetweenHorizontalBottom)
                 {
-                    vertices = CollectHorizontalWallVertices(room.BottomLeftAreaCorner, room.BottomRightAreaCorner);
+                    vertices = CollectWallVertices(room.BottomLeftAreaCorner, room.BottomRightAreaCorner, true);
                     CreateWallMesh(vertices, room.BottomLeftAreaCorner, room.BottomRightAreaCorner, true,true);
                 }
                 
                 if (!isCorridorBetweenHorizontalTop)
                 {
                     // Top horizontal wall
-                    vertices = CollectHorizontalWallVertices(room.TopLeftAreaCorner, room.TopRightAreaCorner);
+                    vertices = CollectWallVertices(room.TopLeftAreaCorner, room.TopRightAreaCorner, true);
                     CreateWallMesh(vertices, room.TopLeftAreaCorner, room.TopRightAreaCorner, true, false);
                 }
             }
@@ -539,58 +539,40 @@ namespace Dungeon
                 if (!isCorridorBetweenVerticalLeft)
                 {
                     // Left vertical wall
-                    vertices = CollectVerticalWallVertices(room.BottomLeftAreaCorner, room.TopLeftAreaCorner);
+                    vertices = CollectWallVertices(room.BottomLeftAreaCorner, room.TopLeftAreaCorner, false);
                     CreateWallMesh(vertices, room.BottomLeftAreaCorner, room.TopLeftAreaCorner, false, false);    
                 }
 
                 if (!isCorridorBetweenVerticalRight)
                 {
                     // Right vertical wall
-                    vertices = CollectVerticalWallVertices(room.BottomRightAreaCorner, room.TopRightAreaCorner);
+                    vertices = CollectWallVertices(room.BottomRightAreaCorner, room.TopRightAreaCorner, false);
                     CreateWallMesh(vertices, room.BottomRightAreaCorner, room.TopRightAreaCorner, false, true);    
                 }
             }
         }
-
-        // TODO: Merge Collect wall vertices methods
-        /// <summary>
-        /// This method collects the vertices for horizontal walls.
-        /// </summary>
-        /// <param name="startCorner">Contains the start point</param>
-        /// <param name="endCorner">Contains the end point</param>
-        /// <returns></returns>
-        private List<Vector3> CollectHorizontalWallVertices(Vector2Int startCorner, Vector2Int endCorner)
-        {
-            var vertices = new List<Vector3>();
-            
-            // Start in one corner of the room and go the the other corner of the room
-            for (var height = 0; height <= dungeonHeight; height++)
-            {
-                for (var x = startCorner.x; x <= endCorner.x; x++)
-                {
-                    var vertex = new Vector3(x, height, startCorner.y);
-                    vertices.Add(vertex);
-                }    
-            }
-            
-            return vertices;
-        }
         
         /// <summary>
-        /// This method collects the vertices for vertical walls.
+        /// This method collects the vertices for a wall
         /// </summary>
-        /// <param name="startCorner">Contains the start point</param>
-        /// <param name="endCorner">Contains the end point</param>
+        /// <param name="startCorner">Contains the start</param>
+        /// <param name="endCorner">Contains the end</param>
+        /// <param name="isHorizontal">Is needed to decide if the 2D x or y direction is used</param>
         /// <returns></returns>
-        private List<Vector3> CollectVerticalWallVertices(Vector2Int startCorner, Vector2Int endCorner)
+        private List<Vector3> CollectWallVertices(Vector2Int startCorner, Vector2Int endCorner, bool isHorizontal)
         {
             var vertices = new List<Vector3>();
+            var start = isHorizontal ? startCorner.x : startCorner.y;
+            var end = isHorizontal ? endCorner.x : endCorner.y;
             
             for (var height = 0; height <= dungeonHeight; height++)
             {
-                for (var z = startCorner.y; z <= endCorner.y; z++)
+                for (var length = start; length <= end; length++)
                 {
-                    var vertex = new Vector3(startCorner.x, height, z);
+                    var vertex = isHorizontal ? 
+                        new Vector3(length, height, startCorner.y) : 
+                        new Vector3(startCorner.x, height, length);
+                    
                     vertices.Add(vertex);
                 }
             }
