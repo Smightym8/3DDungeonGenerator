@@ -18,6 +18,8 @@ namespace Dungeon
         public int corridorWidth;
         public int dungeonHeight;
         public int lightFrequency;
+        public int lightIntensity;
+        public int lightRange;
         public Material floorMaterial;
         public Material roofMaterial;
         public Material startRoomMaterial;
@@ -40,8 +42,9 @@ namespace Dungeon
         private Dictionary<Vector3Int, int> _lightPositions;
         private List<Vector3Int> _ignoreLightPositions;
         private readonly List<GameObject> _dungeonFloors = new();
-        private GameObject _floorParent, _roofParent, _wallParent, _lightsParent;
-
+        private GameObject _floorParent, _roofParent, _wallParent, _lightsParent, _sceneryParent;
+        private List<Vector3> _sceneryPositions;
+        
         // Unity Methods
         private void Start()
         {
@@ -106,10 +109,19 @@ namespace Dungeon
                     parent = currentTransform,
                 }
             };
+            
+            _sceneryParent = new GameObject("Scenery", typeof(MeshFilter), typeof(MeshRenderer))
+            {
+                transform =
+                {
+                    parent = currentTransform,
+                }
+            };
 
             _possibleLightPositions = new List<Vector3Int>();
             _lightPositions = new Dictionary<Vector3Int, int>();
             _ignoreLightPositions = new List<Vector3Int>();
+            _sceneryPositions = new List<Vector3>();
 
             RoomNode startRoom = (RoomNode) listOfRooms[0];
             GameObject endRoom = null;
@@ -197,14 +209,12 @@ namespace Dungeon
             {
                 PlaceLight(position, rotation);
             }
-
-            /*
+            
             // Add random scenery to room
-            for (var i = 0; i < listOfRooms.Count / 2; i++)
+            for (var i = 1; i < listOfRooms.Count / 2 - 1; i++)
             {
-                PlaceRandomScenery(listOfRooms[i]);
+                PlaceScenery(listOfRooms[i]);
             }
-            */
             
             SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
         }
@@ -363,17 +373,25 @@ namespace Dungeon
         }
 
         /// <summary>
-        /// TODO: Comment
+        /// These method places scenery in a room
         /// </summary>
-        /// <param name="room"></param>
-        private void PlaceRandomScenery(Node room)
+        /// <param name="room">Contains the room where the scenery will be placed</param>
+        private void PlaceScenery(Node room)
         {
-            int randomSceneryIndex = Random.Range(0, sceneryPrefabs.Count);
-            int randomX = Random.Range(room.BottomLeftAreaCorner.x + 1, room.BottomRightAreaCorner.x - 1);
-            int randomZ = Random.Range(room.BottomLeftAreaCorner.y + 1, room.TopLeftAreaCorner.y - 1);
-            var position = new Vector3(randomX, 0, randomZ);
+            foreach (var prefab in sceneryPrefabs)
+            {
+                int randomSceneryIndex = Random.Range(0, sceneryPrefabs.Count);
+                int randomX = Random.Range(room.BottomLeftAreaCorner.x + 1, room.BottomRightAreaCorner.x - 1);
+                int randomZ = Random.Range(room.BottomLeftAreaCorner.y + 1, room.TopLeftAreaCorner.y - 1);
+                var position = new Vector3(randomX, 0, randomZ);
 
-            Instantiate(sceneryPrefabs[randomSceneryIndex], position, Quaternion.identity);
+                if (!_sceneryPositions.Contains(position))
+                {
+                    var instantiatedScenery = Instantiate(sceneryPrefabs[randomSceneryIndex], position, Quaternion.identity);
+                    instantiatedScenery.transform.parent = _sceneryParent.transform;
+                    _sceneryPositions.Add(position);
+                }
+            }
         }
 
         /// <summary>
@@ -417,8 +435,8 @@ namespace Dungeon
             
             Light lightSource = lightSourceGameObject.AddComponent<Light>();
             lightSource.type = LightType.Point;
-            lightSource.intensity = 2;
-            lightSource.range = 3;
+            lightSource.intensity = lightIntensity;
+            lightSource.range = lightRange;
             lightSource.color = lightColor;
             lightSource.renderMode = LightRenderMode.ForcePixel;
             lightSource.lightmapBakeType = LightmapBakeType.Baked;
@@ -429,7 +447,7 @@ namespace Dungeon
         /// to collect the vertices and to create the mesh.
         /// </summary>
         /// <param name="room">Contains the room for which the walls will be created</param>
-        /// <param name="corridors">Contains the corridors to check if a wall has to be splitted</param>
+        /// <param name="corridors">Contains the corridors to check if a wall has to be split</param>
         private void CreateWalls(Node room, List<Node> corridors)
         {
             // When collect vertices for a room check if any corridor has its corner points
@@ -558,7 +576,7 @@ namespace Dungeon
         /// <param name="startCorner">Contains the start</param>
         /// <param name="endCorner">Contains the end</param>
         /// <param name="isHorizontal">Is needed to decide if the 2D x or y direction is used</param>
-        /// <returns></returns>
+        /// <returns>vertices</returns>
         private List<Vector3> CollectWallVertices(Vector2Int startCorner, Vector2Int endCorner, bool isHorizontal)
         {
             var vertices = new List<Vector3>();
