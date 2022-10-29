@@ -36,6 +36,7 @@ namespace Dungeon
 
         public GameObject playerPrefab;
         public GameObject torchPrefab;
+        public GameObject tableWithKeyPrefab;
         public List<GameObject> sceneryPrefabs;
 
         private List<Vector3Int> _possibleLightPositions;
@@ -210,15 +211,29 @@ namespace Dungeon
                 PlaceLight(position, rotation);
             }
             
+            // Place table with key to get to next level
+            int randomRoomIndex = Random.Range(1, listOfRooms.Count / 2);
+            // TODO: Place table with key random
+            PlaceTableWithKey((RoomNode) listOfRooms[1]);
+            
+            /*
             // Add random scenery to room
             for (var i = 1; i < listOfRooms.Count / 2 - 1; i++)
             {
                 PlaceScenery(listOfRooms[i]);
             }
+            */
             
             SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
         }
-        
+
+        private void PlaceTableWithKey(RoomNode room)
+        {
+            var position = room.CentrePoint;
+            var keyTable = Instantiate(tableWithKeyPrefab, position, Quaternion.identity);
+            keyTable.tag = Tag.KeyTable;
+        }
+
         private void CombineMeshes(GameObject parent, bool isFloorOrRoof)
         {
             Vector3 position = parent.transform.position;
@@ -468,10 +483,10 @@ namespace Dungeon
                 {
                     // Bottom horizontal wall
                     if (corridor.TopLeftAreaCorner.y == room.BottomLeftAreaCorner.y &&
-                        room.BottomLeftAreaCorner.x < corridor.TopLeftAreaCorner.x &&
-                        corridor.TopLeftAreaCorner.x < room.BottomRightAreaCorner.x &&
-                        room.BottomLeftAreaCorner.x < corridor.TopRightAreaCorner.x &&
-                        corridor.TopRightAreaCorner.x < room.BottomRightAreaCorner.x)
+                        room.BottomLeftAreaCorner.x <= corridor.TopLeftAreaCorner.x &&
+                        corridor.TopLeftAreaCorner.x <= room.BottomRightAreaCorner.x &&
+                        room.BottomLeftAreaCorner.x <= corridor.TopRightAreaCorner.x &&
+                        corridor.TopRightAreaCorner.x <= room.BottomRightAreaCorner.x)
                     {
                         isCorridorBetweenHorizontalBottom = true;
 
@@ -484,10 +499,10 @@ namespace Dungeon
                     
                     // Top horizontal wall
                     if (corridor.BottomLeftAreaCorner.y == room.TopLeftAreaCorner.y &&
-                        room.TopLeftAreaCorner.x < corridor.BottomLeftAreaCorner.x &&
-                        corridor.BottomLeftAreaCorner.x < room.TopRightAreaCorner.x &&
-                        room.TopLeftAreaCorner.x < corridor.BottomRightAreaCorner.x &&
-                        corridor.BottomRightAreaCorner.x < room.TopRightAreaCorner.x)
+                        room.TopLeftAreaCorner.x <= corridor.BottomLeftAreaCorner.x &&
+                        corridor.BottomLeftAreaCorner.x <= room.TopRightAreaCorner.x &&
+                        room.TopLeftAreaCorner.x <= corridor.BottomRightAreaCorner.x &&
+                        corridor.BottomRightAreaCorner.x <= room.TopRightAreaCorner.x)
                     {
                         isCorridorBetweenHorizontalTop = true;
 
@@ -500,10 +515,10 @@ namespace Dungeon
                     
                     // Left vertical wall
                     if (corridor.BottomRightAreaCorner.x == room.BottomLeftAreaCorner.x &&
-                        room.BottomLeftAreaCorner.y < corridor.BottomRightAreaCorner.y &&
-                        corridor.BottomRightAreaCorner.y < room.TopLeftAreaCorner.y &&
-                        room.BottomLeftAreaCorner.y < corridor.TopRightAreaCorner.y &&
-                        corridor.TopRightAreaCorner.y < room.TopLeftAreaCorner.y)
+                        room.BottomLeftAreaCorner.y <= corridor.BottomRightAreaCorner.y &&
+                        corridor.BottomRightAreaCorner.y <= room.TopLeftAreaCorner.y &&
+                        room.BottomLeftAreaCorner.y <= corridor.TopRightAreaCorner.y &&
+                        corridor.TopRightAreaCorner.y <= room.TopLeftAreaCorner.y)
                     {
                         isCorridorBetweenVerticalLeft = true;
                         
@@ -516,10 +531,10 @@ namespace Dungeon
                     
                     // Right vertical
                     if (corridor.BottomLeftAreaCorner.x == room.BottomRightAreaCorner.x &&
-                        room.BottomRightAreaCorner.y < corridor.BottomLeftAreaCorner.y &&
-                        corridor.BottomLeftAreaCorner.y < room.TopRightAreaCorner.y &&
-                        room.BottomRightAreaCorner.y < corridor.TopLeftAreaCorner.y &&
-                        corridor.TopLeftAreaCorner.y < room.TopRightAreaCorner.y)
+                        room.BottomRightAreaCorner.y <= corridor.BottomLeftAreaCorner.y &&
+                        corridor.BottomLeftAreaCorner.y <= room.TopRightAreaCorner.y &&
+                        room.BottomRightAreaCorner.y <= corridor.TopLeftAreaCorner.y &&
+                        corridor.TopLeftAreaCorner.y <= room.TopRightAreaCorner.y)
                     {
                         isCorridorBetweenVerticalRight = true;
                         
