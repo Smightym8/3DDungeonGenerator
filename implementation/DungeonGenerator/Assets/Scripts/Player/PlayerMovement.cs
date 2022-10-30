@@ -23,7 +23,7 @@ namespace Player
         private bool _isMoving;
         private bool _isRunning;
         private bool _isInKeyRange;
-        private bool _isPickupKeyPressed;
+        private bool _isActionKeyPressed;
         private bool _isKeyInInventory;
 
         private static readonly int IsWalking = Animator.StringToHash("isWalking");
@@ -75,14 +75,14 @@ namespace Player
             }
             
             // Pick up key
-            if (Input.GetKeyDown(KeyCode.E) && _isInKeyRange && !_isKeyInInventory)
+            if (Input.GetKeyDown(KeyCode.E))
             {
-                _isPickupKeyPressed = true;
+                _isActionKeyPressed = true;
             }
             
             if (Input.GetKeyUp(KeyCode.E))
             {
-                _isPickupKeyPressed = false;
+                _isActionKeyPressed = false;
             }
         }
 
@@ -115,7 +115,7 @@ namespace Player
                 _currentSpeed = walkingSpeed;
             }
 
-            if (_isPickupKeyPressed && _isInKeyRange && !_isKeyInInventory)
+            if (_isActionKeyPressed && _isInKeyRange && !_isKeyInInventory)
             {
                 Destroy(_key, 0);
                 _isKeyInInventory = true;
@@ -130,16 +130,21 @@ namespace Player
                 _uiManager.SetText("Press E to pick up the key");
                 _uiManager.ToggleTextWindow(true); 
             }
+            else if (other.tag.Equals(Tag.NextLevelDoor))
+            {
+                _uiManager.SetText(!_isKeyInInventory
+                    ? "You need the key to open the door"
+                    : "Press E to enter the next level");
+
+                _uiManager.ToggleTextWindow(true);
+            }
         }
 
         private void OnTriggerExit(Collider other)
         {
-            if (other.tag.Equals(Tag.KeyTable))
-            {
-                _isInKeyRange = false;
-                FindObjectOfType<UIManager>().ToggleTextWindow(false);    
-                _uiManager.SetText("");
-            }
+            _isInKeyRange = false;
+            FindObjectOfType<UIManager>().ToggleTextWindow(false);    
+            _uiManager.SetText("");
         }
     }
 }

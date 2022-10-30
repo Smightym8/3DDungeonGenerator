@@ -37,6 +37,7 @@ namespace Dungeon
         public GameObject playerPrefab;
         public GameObject torchPrefab;
         public GameObject tableWithKeyPrefab;
+        public GameObject doorPrefab;
         public List<GameObject> sceneryPrefabs;
 
         private List<Vector3Int> _possibleLightPositions;
@@ -126,6 +127,7 @@ namespace Dungeon
 
             RoomNode startRoom = (RoomNode) listOfRooms[0];
             GameObject endRoom = null;
+            RoomNode endRoomNode = null;
             float maxDistance = 0f;
             
             foreach (var (room, index) in listOfRooms.Select((room, index) => ( room, index )))
@@ -170,13 +172,16 @@ namespace Dungeon
             
                     maxDistance = dist;
                     endRoom = _dungeonFloors[index];
+                    endRoomNode = currentRoom;
                 }
             }
 
             // Visualize end room if one was found
             if (endRoom != null)
             {
-                endRoom.GetComponent<MeshRenderer>().material = endRoomMaterial;    
+                endRoom.GetComponent<MeshRenderer>().material = endRoomMaterial;
+                // TODO: Use endRoomNode instead
+                PlaceNextLevelDoor((RoomNode) listOfRooms[2]);
             }
             
             // Create the roof
@@ -225,6 +230,19 @@ namespace Dungeon
             */
             
             SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
+        }
+
+        private void PlaceNextLevelDoor(RoomNode room)
+        {
+            var position = room.CentrePoint;
+            var door = Instantiate(doorPrefab, position, Quaternion.identity);
+            door.AddComponent<BoxCollider>();
+            door.tag = Tag.NextLevelDoor;
+            
+            // Add sphere collider as trigger for interaction with player
+            var triggerCollider = door.AddComponent<SphereCollider>();
+            triggerCollider.isTrigger = true;
+            triggerCollider.radius = 1.5f;
         }
 
         private void PlaceTableWithKey(RoomNode room)
