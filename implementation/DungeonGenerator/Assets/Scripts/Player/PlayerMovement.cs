@@ -1,3 +1,4 @@
+using System;
 using General;
 using UnityEngine;
 
@@ -33,6 +34,11 @@ namespace Player
             _rigidbody = player.GetComponent<Rigidbody>();
             _currentSpeed = walkingSpeed;
             _uiManager = FindObjectOfType<UIManager>();
+        }
+
+        private void Start()
+        {
+            // Get key in start method because Awake method is called before the key exists
             _key = GameObject.FindGameObjectWithTag(Tag.Key);
         }
 
@@ -118,7 +124,7 @@ namespace Player
 
         private void OnTriggerEnter(Collider other)
         {
-            if (other.tag.Equals(Tag.KeyTable))
+            if (other.tag.Equals(Tag.KeyTable) && !_isKeyInInventory)
             {
                 _isInKeyRange = true;
                 _uiManager.SetText("Press E to pick up the key");
