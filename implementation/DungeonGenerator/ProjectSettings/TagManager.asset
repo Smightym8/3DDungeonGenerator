@@ -6,6 +6,7 @@ TagManager:
   tags:
   - KeyTable
   - Key
+  - NextLevelDoor
   layers:
   - Default
   - TransparentFX

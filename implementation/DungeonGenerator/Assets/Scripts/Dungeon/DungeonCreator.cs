@@ -46,8 +46,17 @@ namespace Dungeon
         private readonly List<GameObject> _dungeonFloors = new();
         private GameObject _floorParent, _roofParent, _wallParent, _lightsParent, _sceneryParent;
         private List<Vector3> _sceneryPositions;
+
+        public static DungeonCreator dungeonCreator;
+
+        private List<Vector3> _tempList = new List<Vector3>();
         
         // Unity Methods
+        private void Awake()
+        {
+            dungeonCreator = this;
+        }
+
         private void Start()
         {
             var sw = new Stopwatch();
@@ -78,7 +87,7 @@ namespace Dungeon
                 corridorWidth
             );
             
-            // Parent objects for floor, roof and walls
+            // Parent objects for floor, roof, walls and scenery
             var currentTransform = transform;
             _floorParent = new GameObject("Floors", typeof(MeshFilter), typeof(MeshRenderer))
             {
@@ -126,7 +135,6 @@ namespace Dungeon
             _sceneryPositions = new List<Vector3>();
 
             RoomNode startRoom = (RoomNode) listOfRooms[0];
-            GameObject endRoom = null;
             RoomNode endRoomNode = null;
             float maxDistance = 0f;
             
@@ -171,18 +179,11 @@ namespace Dungeon
                     if (!(maxDistance < dist)) continue;
             
                     maxDistance = dist;
-                    endRoom = _dungeonFloors[index];
                     endRoomNode = currentRoom;
                 }
             }
-
-            // Visualize end room if one was found
-            if (endRoom != null)
-            {
-                endRoom.GetComponent<MeshRenderer>().material = endRoomMaterial;
-                // TODO: Use endRoomNode instead
-                PlaceNextLevelDoor((RoomNode) listOfRooms[2]);
-            }
+            
+            PlaceNextLevelDoor(endRoomNode);
             
             // Create the roof
             foreach (var (room, index) in listOfRooms.Select((room, index) => ( room, index )))
@@ -217,9 +218,8 @@ namespace Dungeon
             }
             
             // Place table with key to get to next level
-            int randomRoomIndex = Random.Range(1, listOfRooms.Count / 2);
-            // TODO: Place table with key random
-            PlaceTableWithKey((RoomNode) listOfRooms[1]);
+            var randomRoomIndex = Random.Range(1, listOfRooms.Count / 2);
+            PlaceTableWithKey((RoomNode) listOfRooms[randomRoomIndex]);
             
             /*
             // Add random scenery to room
@@ -238,6 +238,7 @@ namespace Dungeon
             var door = Instantiate(doorPrefab, position, Quaternion.identity);
             door.AddComponent<BoxCollider>();
             door.tag = Tag.NextLevelDoor;
+            door.transform.parent = _sceneryParent.transform;
             
             // Add sphere collider as trigger for interaction with player
             var triggerCollider = door.AddComponent<SphereCollider>();
@@ -250,6 +251,7 @@ namespace Dungeon
             var position = room.CentrePoint;
             var keyTable = Instantiate(tableWithKeyPrefab, position, Quaternion.identity);
             keyTable.tag = Tag.KeyTable;
+            keyTable.transform.parent = _sceneryParent.transform;
         }
 
         private void CombineMeshes(GameObject parent, bool isFloorOrRoof)
@@ -487,10 +489,10 @@ namespace Dungeon
             // in the range of the wall
             List<Vector3> vertices;
 
-            var isCorridorBetweenHorizontalBottom = false;
-            var isCorridorBetweenHorizontalTop = false;
-            var isCorridorBetweenVerticalLeft = false;
-            var isCorridorBetweenVerticalRight = false;
+            var isNormalWallHorizontalBottom = true;
+            var isNormalWallHorizontalTop = true;
+            var isNormalWallVerticalLeft = true;
+            var isNormalWallVerticalRight = true;
             
             // Split wall into two walls
             // Check if there is a corridor between the start and endpoint of the wall
@@ -500,13 +502,10 @@ namespace Dungeon
                 foreach (var corridor in corridors)
                 {
                     // Bottom horizontal wall
-                    if (corridor.TopLeftAreaCorner.y == room.BottomLeftAreaCorner.y &&
-                        room.BottomLeftAreaCorner.x <= corridor.TopLeftAreaCorner.x &&
-                        corridor.TopLeftAreaCorner.x <= room.BottomRightAreaCorner.x &&
-                        room.BottomLeftAreaCorner.x <= corridor.TopRightAreaCorner.x &&
-                        corridor.TopRightAreaCorner.x <= room.BottomRightAreaCorner.x)
+                    if (HasCorridorBetween(room.BottomLeftAreaCorner, room.BottomRightAreaCorner,
+                            corridor.TopLeftAreaCorner, corridor.TopRightAreaCorner, true))
                     {
-                        isCorridorBetweenHorizontalBottom = true;
+                        isNormalWallHorizontalBottom = false;
 
                         vertices = CollectWallVertices(room.BottomLeftAreaCorner, corridor.TopLeftAreaCorner, true);
                         CreateWallMesh(vertices, room.BottomLeftAreaCorner, corridor.TopLeftAreaCorner, true,true);
@@ -514,15 +513,34 @@ namespace Dungeon
                         vertices = CollectWallVertices(corridor.TopRightAreaCorner, room.BottomRightAreaCorner, true);
                         CreateWallMesh(vertices, corridor.TopRightAreaCorner, room.BottomRightAreaCorner, true, true);
                     }
+                    else if (HasCorridorAtLeftCorner(room.BottomLeftAreaCorner, room.BottomRightAreaCorner,
+                                 corridor.TopLeftAreaCorner, corridor.TopRightAreaCorner, true))
+                    {
+                        isNormalWallHorizontalBottom = false;
+                        
+                        vertices = CollectWallVertices(corridor.TopLeftAreaCorner, room.BottomLeftAreaCorner, true);
+                        CreateWallMesh(vertices, corridor.TopLeftAreaCorner, room.BottomLeftAreaCorner, true,false);
+                        
+                        vertices = CollectWallVertices(corridor.TopRightAreaCorner, room.BottomRightAreaCorner, true);
+                        CreateWallMesh(vertices, corridor.TopRightAreaCorner, room.BottomRightAreaCorner, true,true);
+                    }
+                    else if (HasCorridorAtRightCorner(room.BottomLeftAreaCorner, room.BottomRightAreaCorner,
+                                 corridor.TopLeftAreaCorner, corridor.TopRightAreaCorner, true))
+                    {
+                        isNormalWallHorizontalBottom = false;
+                        
+                        vertices = CollectWallVertices(room.BottomLeftAreaCorner, corridor.TopLeftAreaCorner, true);
+                        CreateWallMesh(vertices, room.BottomLeftAreaCorner, corridor.TopLeftAreaCorner, true,true);
+                        
+                        vertices = CollectWallVertices(room.BottomRightAreaCorner, corridor.TopRightAreaCorner, true);
+                        CreateWallMesh(vertices, room.BottomRightAreaCorner, corridor.TopRightAreaCorner, true,false);
+                    }
                     
                     // Top horizontal wall
-                    if (corridor.BottomLeftAreaCorner.y == room.TopLeftAreaCorner.y &&
-                        room.TopLeftAreaCorner.x <= corridor.BottomLeftAreaCorner.x &&
-                        corridor.BottomLeftAreaCorner.x <= room.TopRightAreaCorner.x &&
-                        room.TopLeftAreaCorner.x <= corridor.BottomRightAreaCorner.x &&
-                        corridor.BottomRightAreaCorner.x <= room.TopRightAreaCorner.x)
+                    if (HasCorridorBetween(room.TopLeftAreaCorner, room.TopRightAreaCorner, 
+                            corridor.BottomLeftAreaCorner, corridor.BottomRightAreaCorner, true))
                     {
-                        isCorridorBetweenHorizontalTop = true;
+                        isNormalWallHorizontalTop = false;
 
                         vertices = CollectWallVertices(room.TopLeftAreaCorner, corridor.BottomLeftAreaCorner, true);
                         CreateWallMesh(vertices, room.TopLeftAreaCorner, corridor.BottomLeftAreaCorner, true,false);
@@ -530,15 +548,34 @@ namespace Dungeon
                         vertices = CollectWallVertices(corridor.BottomRightAreaCorner, room.TopRightAreaCorner, true);
                         CreateWallMesh(vertices, corridor.BottomRightAreaCorner, room.TopRightAreaCorner, true, false);
                     }
+                    else if (HasCorridorAtLeftCorner(room.TopLeftAreaCorner, room.TopRightAreaCorner, 
+                                 corridor.BottomLeftAreaCorner, corridor.BottomRightAreaCorner, true))
+                    {
+                        isNormalWallHorizontalTop = false;
+
+                        vertices = CollectWallVertices(corridor.BottomLeftAreaCorner, room.TopLeftAreaCorner, true);
+                        CreateWallMesh(vertices, corridor.BottomLeftAreaCorner, room.TopLeftAreaCorner, true,true);
+                        
+                        vertices = CollectWallVertices(corridor.BottomRightAreaCorner, room.TopRightAreaCorner, true);
+                        CreateWallMesh(vertices, corridor.BottomRightAreaCorner, room.TopRightAreaCorner, true, false);
+                    }
+                    else if (HasCorridorAtRightCorner(room.TopLeftAreaCorner, room.TopRightAreaCorner, 
+                                 corridor.BottomLeftAreaCorner, corridor.BottomRightAreaCorner, true))
+                    {
+                        isNormalWallHorizontalTop = false;
+
+                        vertices = CollectWallVertices(room.TopLeftAreaCorner, corridor.BottomLeftAreaCorner, true);
+                        CreateWallMesh(vertices, room.TopLeftAreaCorner, corridor.BottomLeftAreaCorner, true,false);
+                        
+                        vertices = CollectWallVertices(room.TopRightAreaCorner, corridor.BottomRightAreaCorner, true);
+                        CreateWallMesh(vertices, room.TopRightAreaCorner, corridor.BottomRightAreaCorner, true, true);
+                    }
                     
                     // Left vertical wall
-                    if (corridor.BottomRightAreaCorner.x == room.BottomLeftAreaCorner.x &&
-                        room.BottomLeftAreaCorner.y <= corridor.BottomRightAreaCorner.y &&
-                        corridor.BottomRightAreaCorner.y <= room.TopLeftAreaCorner.y &&
-                        room.BottomLeftAreaCorner.y <= corridor.TopRightAreaCorner.y &&
-                        corridor.TopRightAreaCorner.y <= room.TopLeftAreaCorner.y)
+                    if (HasCorridorBetween(room.BottomLeftAreaCorner, room.TopLeftAreaCorner, 
+                            corridor.BottomRightAreaCorner, corridor.TopRightAreaCorner, false))
                     {
-                        isCorridorBetweenVerticalLeft = true;
+                        isNormalWallVerticalLeft = false;
                         
                         vertices = CollectWallVertices(room.BottomLeftAreaCorner, corridor.BottomRightAreaCorner, false);
                         CreateWallMesh(vertices, room.BottomLeftAreaCorner, corridor.BottomRightAreaCorner, false,false);
@@ -546,21 +583,62 @@ namespace Dungeon
                         vertices = CollectWallVertices(corridor.TopRightAreaCorner, room.TopLeftAreaCorner, false);
                         CreateWallMesh(vertices, corridor.TopRightAreaCorner, room.TopLeftAreaCorner, false, false);
                     }
+                    else if (HasCorridorAtLeftCorner(room.BottomLeftAreaCorner, room.TopLeftAreaCorner, 
+                                 corridor.BottomRightAreaCorner, corridor.TopRightAreaCorner, false))
+                    {
+                        isNormalWallVerticalLeft = false;
+                        
+                        vertices = CollectWallVertices(corridor.BottomRightAreaCorner, room.BottomLeftAreaCorner, false);
+                        CreateWallMesh(vertices, corridor.BottomRightAreaCorner, room.BottomLeftAreaCorner, false,true);
+                        
+                        vertices = CollectWallVertices(corridor.TopRightAreaCorner, room.TopLeftAreaCorner, false);
+                        CreateWallMesh(vertices, corridor.TopRightAreaCorner, room.TopLeftAreaCorner, false, false);
+                    }
+                    else if (HasCorridorAtRightCorner(room.BottomLeftAreaCorner, room.TopLeftAreaCorner, 
+                                 corridor.BottomRightAreaCorner, corridor.TopRightAreaCorner, false))
+                    {
+                        isNormalWallVerticalLeft = false;
+                        
+                        vertices = CollectWallVertices(room.BottomLeftAreaCorner, corridor.BottomRightAreaCorner, false);
+                        CreateWallMesh(vertices, room.BottomLeftAreaCorner, corridor.BottomRightAreaCorner, false,false);
+                        
+                        vertices = CollectWallVertices(room.TopLeftAreaCorner, corridor.TopRightAreaCorner, false);
+                        CreateWallMesh(vertices, room.TopLeftAreaCorner, corridor.TopRightAreaCorner, false, true);
+                    }
                     
                     // Right vertical
-                    if (corridor.BottomLeftAreaCorner.x == room.BottomRightAreaCorner.x &&
-                        room.BottomRightAreaCorner.y <= corridor.BottomLeftAreaCorner.y &&
-                        corridor.BottomLeftAreaCorner.y <= room.TopRightAreaCorner.y &&
-                        room.BottomRightAreaCorner.y <= corridor.TopLeftAreaCorner.y &&
-                        corridor.TopLeftAreaCorner.y <= room.TopRightAreaCorner.y)
+                    if (HasCorridorBetween(room.BottomRightAreaCorner, room.TopRightAreaCorner, 
+                            corridor.BottomLeftAreaCorner, corridor.TopLeftAreaCorner, false))
                     {
-                        isCorridorBetweenVerticalRight = true;
+                        isNormalWallVerticalRight = false;
                         
                         vertices = CollectWallVertices(room.BottomRightAreaCorner, corridor.BottomLeftAreaCorner, false);
                         CreateWallMesh(vertices, room.BottomRightAreaCorner, corridor.BottomLeftAreaCorner, false,true);
                         
                         vertices = CollectWallVertices(corridor.TopLeftAreaCorner, room.TopRightAreaCorner, false);
                         CreateWallMesh(vertices, corridor.TopLeftAreaCorner, room.TopRightAreaCorner, false, true);
+                    }
+                    else if (HasCorridorAtLeftCorner(room.BottomRightAreaCorner, room.TopRightAreaCorner, 
+                                 corridor.BottomLeftAreaCorner, corridor.TopLeftAreaCorner, false))
+                    {
+                        isNormalWallVerticalRight = false;
+                        
+                        vertices = CollectWallVertices(corridor.BottomLeftAreaCorner, room.BottomRightAreaCorner, false);
+                        CreateWallMesh(vertices, corridor.BottomLeftAreaCorner, room.BottomRightAreaCorner, false,false);
+                        
+                        vertices = CollectWallVertices(corridor.TopLeftAreaCorner, room.TopRightAreaCorner, false);
+                        CreateWallMesh(vertices, corridor.TopLeftAreaCorner, room.TopRightAreaCorner, false, true);
+                    }
+                    else if (HasCorridorAtRightCorner(room.BottomRightAreaCorner, room.TopRightAreaCorner, 
+                                 corridor.BottomLeftAreaCorner, corridor.TopLeftAreaCorner, false))
+                    {
+                        isNormalWallVerticalRight = false;
+                        
+                        vertices = CollectWallVertices(room.BottomRightAreaCorner, corridor.BottomLeftAreaCorner, false);
+                        CreateWallMesh(vertices, room.BottomRightAreaCorner, corridor.BottomLeftAreaCorner, false,true);
+                        
+                        vertices = CollectWallVertices(room.TopRightAreaCorner, corridor.TopLeftAreaCorner, false);
+                        CreateWallMesh(vertices, room.TopRightAreaCorner, corridor.TopLeftAreaCorner, false, false);
                     }
                 }
             }
@@ -570,13 +648,13 @@ namespace Dungeon
             if (!room.IsCorridor || room.IsHorizontalCorridor)
             {
                 // Bottom horizontal wall
-                if (!isCorridorBetweenHorizontalBottom)
+                if (isNormalWallHorizontalBottom)
                 {
                     vertices = CollectWallVertices(room.BottomLeftAreaCorner, room.BottomRightAreaCorner, true);
                     CreateWallMesh(vertices, room.BottomLeftAreaCorner, room.BottomRightAreaCorner, true,true);
                 }
                 
-                if (!isCorridorBetweenHorizontalTop)
+                if (isNormalWallHorizontalTop)
                 {
                     // Top horizontal wall
                     vertices = CollectWallVertices(room.TopLeftAreaCorner, room.TopRightAreaCorner, true);
@@ -587,14 +665,14 @@ namespace Dungeon
             // Vertical
             if (!room.IsCorridor || !room.IsHorizontalCorridor)
             {
-                if (!isCorridorBetweenVerticalLeft)
+                if (isNormalWallVerticalLeft)
                 {
                     // Left vertical wall
                     vertices = CollectWallVertices(room.BottomLeftAreaCorner, room.TopLeftAreaCorner, false);
                     CreateWallMesh(vertices, room.BottomLeftAreaCorner, room.TopLeftAreaCorner, false, false);    
                 }
 
-                if (!isCorridorBetweenVerticalRight)
+                if (isNormalWallVerticalRight)
                 {
                     // Right vertical wall
                     vertices = CollectWallVertices(room.BottomRightAreaCorner, room.TopRightAreaCorner, false);
@@ -603,6 +681,69 @@ namespace Dungeon
             }
         }
         
+        /// <summary>
+        /// This method checks if a corridor is between the two corners of a given wall side
+        /// </summary>
+        /// <param name="roomStartCorner">Contains the start corner of the room</param>
+        /// <param name="roomEndCorner">Contains the end corner of the room</param>
+        /// <param name="corridorStartCorner">Contains the start corner of the corridor</param>
+        /// <param name="corridorEndCorner">Contains the end corner of the corridor</param>
+        /// <param name="isHorizontal">Marks the room side as horizontal</param>
+        /// <returns>true if the corridor is between the room corners or false if it is not</returns>
+        private bool HasCorridorBetween(Vector2Int roomStartCorner, Vector2Int roomEndCorner, 
+        Vector2Int corridorStartCorner, Vector2Int corridorEndCorner, bool isHorizontal)
+        {
+            // The room and corridor coordinates are not changing into this direction
+            // and have to be equal so in 2D they are on the same height
+            var roomStaticDirectionPos = isHorizontal ? roomStartCorner.y : roomStartCorner.x;
+            var corridorStaticDirectionPos = isHorizontal ? corridorStartCorner.y : corridorStartCorner.x;
+
+            var roomStartCoordinate = isHorizontal ? roomStartCorner.x : roomStartCorner.y;
+            var roomEndCoordinate = isHorizontal ? roomEndCorner.x : roomEndCorner.y;
+            var corridorStartCoordinate = isHorizontal ? corridorStartCorner.x : corridorStartCorner.y;
+            var corridorEndCoordinate = isHorizontal ? corridorEndCorner.x : corridorEndCorner.y;
+            
+            return roomStaticDirectionPos == corridorStaticDirectionPos &&
+                   roomStartCoordinate <= corridorStartCoordinate &&
+                   corridorStartCoordinate <= roomEndCoordinate &&
+                   roomStartCoordinate <= corridorEndCoordinate &&
+                   corridorEndCoordinate <= roomEndCoordinate;
+        }
+
+        private bool HasCorridorAtLeftCorner(Vector2Int roomStartCorner, Vector2Int roomEndCorner, 
+            Vector2Int corridorStartCorner, Vector2Int corridorEndCorner, bool isHorizontal)
+        {
+            var roomStaticDirectionPos = isHorizontal ? roomStartCorner.y : roomStartCorner.x;
+            var corridorStaticDirectionPos = isHorizontal ? corridorStartCorner.y : corridorStartCorner.x;
+
+            var roomStartCoordinate = isHorizontal ? roomStartCorner.x : roomStartCorner.y;
+            var roomEndCoordinate = isHorizontal ? roomEndCorner.x : roomEndCorner.y;
+            var corridorStartCoordinate = isHorizontal ? corridorStartCorner.x : corridorStartCorner.y;
+            var corridorEndCoordinate = isHorizontal ? corridorEndCorner.x : corridorEndCorner.y;
+            
+            return roomStaticDirectionPos == corridorStaticDirectionPos &&
+                   corridorStartCoordinate < roomStartCoordinate &&
+                   roomStartCoordinate < corridorEndCoordinate &&
+                   corridorEndCoordinate < roomEndCoordinate;
+        }
+        
+        private bool HasCorridorAtRightCorner(Vector2Int roomStartCorner, Vector2Int roomEndCorner, 
+            Vector2Int corridorStartCorner, Vector2Int corridorEndCorner, bool isHorizontal)
+        {
+            var roomStaticDirectionPos = isHorizontal ? roomStartCorner.y : roomStartCorner.x;
+            var corridorStaticDirectionPos = isHorizontal ? corridorStartCorner.y : corridorStartCorner.x;
+
+            var roomStartCoordinate = isHorizontal ? roomStartCorner.x : roomStartCorner.y;
+            var roomEndCoordinate = isHorizontal ? roomEndCorner.x : roomEndCorner.y;
+            var corridorStartCoordinate = isHorizontal ? corridorStartCorner.x : corridorStartCorner.y;
+            var corridorEndCoordinate = isHorizontal ? corridorEndCorner.x : corridorEndCorner.y;
+            
+            return roomStaticDirectionPos == corridorStaticDirectionPos &&
+                   roomStartCoordinate < corridorStartCoordinate &&
+                   corridorStartCoordinate < roomEndCoordinate &&
+                   roomEndCoordinate < corridorEndCoordinate;
+        }
+
         /// <summary>
         /// This method collects the vertices for a wall
         /// </summary>
@@ -816,19 +957,26 @@ namespace Dungeon
             return dungeonFloor;
         }
 
-        /*
+        public void ResetDungeon()
+        {
+            foreach (Transform child in transform) {
+                Destroy(child.gameObject);
+            }
+            
+            CreateDungeon();
+        }
+        
         // For developing purpose to see if the points are on the correct position
         private void OnDrawGizmos()
         {
-            if (_lightPositions == null) return;
+            if (_tempList == null) return;
 
             Gizmos.color = Color.black;
 
-            foreach (var (point, rotation) in _lightPositions)
+            foreach (var point in _tempList)
             {
                 Gizmos.DrawSphere(point, 0.1f);
             }
         }
-        */
     }    
 }

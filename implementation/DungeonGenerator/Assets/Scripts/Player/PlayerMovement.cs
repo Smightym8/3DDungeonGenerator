@@ -1,4 +1,4 @@
-using System;
+using Dungeon;
 using General;
 using UnityEngine;
 
@@ -22,7 +22,9 @@ namespace Player
     
         private bool _isMoving;
         private bool _isRunning;
+        
         private bool _isInKeyRange;
+        private bool _isInDoorRange;
         private bool _isActionKeyPressed;
         private bool _isKeyInInventory;
 
@@ -120,6 +122,13 @@ namespace Player
                 Destroy(_key, 0);
                 _isKeyInInventory = true;
             }
+
+            if (_isActionKeyPressed && _isInDoorRange && _isKeyInInventory)
+            {
+                // Reload Dungeon
+                DungeonCreator.dungeonCreator.ResetDungeon();
+                ResetPlayerState();
+            }
         }
 
         private void OnTriggerEnter(Collider other)
@@ -132,6 +141,7 @@ namespace Player
             }
             else if (other.tag.Equals(Tag.NextLevelDoor))
             {
+                _isInDoorRange = true;
                 _uiManager.SetText(!_isKeyInInventory
                     ? "You need the key to open the door"
                     : "Press E to enter the next level");
@@ -143,8 +153,19 @@ namespace Player
         private void OnTriggerExit(Collider other)
         {
             _isInKeyRange = false;
-            FindObjectOfType<UIManager>().ToggleTextWindow(false);    
+            _isInDoorRange = false;
+            _uiManager.ToggleTextWindow(false);    
             _uiManager.SetText("");
+        }
+
+        private void ResetPlayerState()
+        {
+            _isKeyInInventory = false;
+            _isInKeyRange = false;
+            _isInDoorRange = false;
+            _uiManager.ToggleTextWindow(false);    
+            _uiManager.SetText("");
+            _key = GameObject.FindGameObjectWithTag(Tag.Key);
         }
     }
 }
