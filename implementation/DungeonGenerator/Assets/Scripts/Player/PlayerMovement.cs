@@ -121,6 +121,7 @@ namespace Player
             {
                 Destroy(_key, 0);
                 _isKeyInInventory = true;
+                _uiManager.SetText("You picked up the key");
             }
 
             if (_isActionKeyPressed && _isInDoorRange && _isKeyInInventory)
@@ -136,15 +137,15 @@ namespace Player
             if (other.tag.Equals(Tag.KeyTable) && !_isKeyInInventory)
             {
                 _isInKeyRange = true;
-                _uiManager.SetText("Press E to pick up the key");
+                _uiManager.SetText("Press E to pick up the key.");
                 _uiManager.ToggleTextWindow(true); 
             }
             else if (other.tag.Equals(Tag.NextLevelDoor))
             {
                 _isInDoorRange = true;
                 _uiManager.SetText(!_isKeyInInventory
-                    ? "You need the key to open the door"
-                    : "Press E to enter the next level");
+                    ? "You need the key to open the door."
+                    : "Press E to enter the next level.");
 
                 _uiManager.ToggleTextWindow(true);
             }

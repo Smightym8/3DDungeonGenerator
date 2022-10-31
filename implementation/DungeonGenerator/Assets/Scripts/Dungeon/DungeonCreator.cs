@@ -75,7 +75,7 @@ namespace Dungeon
         private void CreateDungeon()
         {
             DungeonGenerator generator = new DungeonGenerator(dungeonWidth, dungeonLength);
-            var listOfRooms = generator.CalculateDungeon(
+            var listOfRoomsAndCorridors = generator.CalculateDungeon(
                 maxIterations, 
                 roomWidthMin, 
                 roomLengthMin,
@@ -86,6 +86,8 @@ namespace Dungeon
                 roomOffset,
                 corridorWidth
             );
+            
+            var corridors = listOfRoomsAndCorridors.Where(x => x.IsCorridor).ToList();
             
             // Parent objects for floor, roof, walls and scenery
             var currentTransform = transform;
@@ -134,11 +136,11 @@ namespace Dungeon
             _ignoreLightPositions = new List<Vector3Int>();
             _sceneryPositions = new List<Vector3>();
 
-            RoomNode startRoom = (RoomNode) listOfRooms[0];
-            RoomNode endRoomNode = null;
+            RoomNode startRoom = (RoomNode) listOfRoomsAndCorridors[0];
+            Node endRoomNode = null;
             float maxDistance = 0f;
             
-            foreach (var (room, index) in listOfRooms.Select((room, index) => ( room, index )))
+            foreach (var (room, index) in listOfRoomsAndCorridors.Select((room, index) => ( room, index )))
             {
                 // Create floor
                 // Choose first generated room as start room
@@ -171,9 +173,9 @@ namespace Dungeon
         
                 // Check distance between start room and each other room
                 // to find the room which is the most distant from the start room
-                if (index > 0 && index < listOfRooms.Count / 2)
+                if (index > 0 && index < listOfRoomsAndCorridors.Count / 2)
                 {
-                    RoomNode currentRoom = (RoomNode)listOfRooms[index];
+                    RoomNode currentRoom = (RoomNode)listOfRoomsAndCorridors[index];
                     float dist = Vector3.Distance(startRoom.CentrePoint, currentRoom.CentrePoint);
 
                     if (!(maxDistance < dist)) continue;
@@ -183,10 +185,10 @@ namespace Dungeon
                 }
             }
             
-            PlaceNextLevelDoor(endRoomNode);
+            PlaceNextLevelDoor(endRoomNode, corridors);
             
             // Create the roof
-            foreach (var (room, index) in listOfRooms.Select((room, index) => ( room, index )))
+            foreach (var (room, index) in listOfRoomsAndCorridors.Select((room, index) => ( room, index )))
             {
                 _dungeonFloors.Add(
                     CreateFloorMesh(
@@ -199,9 +201,8 @@ namespace Dungeon
                     )
                 );
             }
-
-            var corridors = listOfRooms.GetRange(listOfRooms.Count / 2 + 1, listOfRooms.Count / 2 - 1);
-            foreach (var room in listOfRooms)
+            
+            foreach (var room in listOfRoomsAndCorridors)
             {
                 CreateWalls(room, corridors);
                 CollectLightPositions(room);
@@ -218,8 +219,8 @@ namespace Dungeon
             }
             
             // Place table with key to get to next level
-            var randomRoomIndex = Random.Range(1, listOfRooms.Count / 2);
-            PlaceTableWithKey((RoomNode) listOfRooms[randomRoomIndex]);
+            var randomRoomIndex = Random.Range(1, listOfRoomsAndCorridors.Count / 2);
+            PlaceTableWithKey((RoomNode) listOfRoomsAndCorridors[randomRoomIndex]);
             
             /*
             // Add random scenery to room
@@ -229,16 +230,69 @@ namespace Dungeon
             }
             */
             
-            SpawnPlayer(playerPrefab, (RoomNode) listOfRooms[0]);
+            SpawnPlayer(playerPrefab, (RoomNode) listOfRoomsAndCorridors[0]);
         }
 
-        private void PlaceNextLevelDoor(RoomNode room)
+        private void PlaceNextLevelDoor(Node room, List<Node> corridors)
         {
-            var position = room.CentrePoint;
+            var position = Vector3.zero;
+            var rotation = Vector3.zero;
+
+            var bottomHorizontalHasCorridor = false;
+            var topHorizontalHasCorridor = false;
+            var leftVerticalHasCorridor = false;
+            var rightVerticalHasCorridor = false;
+            
+            // Check which wall doesn't have a corridor so the door can be placed properly
+            foreach (var corridor in corridors)
+            {
+                // Bottom horizontal
+                bottomHorizontalHasCorridor = HasCorridorBetween(room.BottomLeftAreaCorner, room.BottomRightAreaCorner,
+                    corridor.TopLeftAreaCorner, corridor.TopRightAreaCorner, true);
+
+                // Top horizontal
+                topHorizontalHasCorridor = HasCorridorBetween(room.TopLeftAreaCorner, room.TopRightAreaCorner,
+                    corridor.BottomLeftAreaCorner, corridor.BottomRightAreaCorner, true);
+
+                // Left vertical
+                leftVerticalHasCorridor = HasCorridorBetween(room.BottomLeftAreaCorner, room.TopLeftAreaCorner,
+                    corridor.BottomRightAreaCorner, corridor.TopRightAreaCorner, false);
+                
+                // Right vertical
+                rightVerticalHasCorridor = HasCorridorBetween(room.BottomRightAreaCorner, room.TopRightAreaCorner,
+                    corridor.BottomLeftAreaCorner, corridor.TopLeftAreaCorner, false);
+            }
+
+            if (!bottomHorizontalHasCorridor)
+            {
+                var halfLength = Math.Abs(room.BottomRightAreaCorner.x - room.BottomLeftAreaCorner.x) / 2;
+                position = new Vector3(room.BottomLeftAreaCorner.x, 0, room.BottomLeftAreaCorner.y);
+                position.x += halfLength;
+            }
+            else if (!topHorizontalHasCorridor)
+            {
+                var halfLength = Math.Abs(room.TopRightAreaCorner.x - room.TopLeftAreaCorner.x) / 2;
+                position = new Vector3(room.TopLeftAreaCorner.x, 0, room.TopLeftAreaCorner.y);
+                position.x += halfLength;
+            }
+            else if (!leftVerticalHasCorridor)
+            {
+                var halfLength = Math.Abs(room.TopLeftAreaCorner.y - room.BottomLeftAreaCorner.y) / 2;
+                position = new Vector3(room.BottomLeftAreaCorner.x, 0, room.BottomLeftAreaCorner.y);
+                position.y += halfLength;
+            }
+            else if (!rightVerticalHasCorridor)
+            {
+                var halfLength = Math.Abs(room.TopRightAreaCorner.y - room.BottomRightAreaCorner.y) / 2;
+                position = new Vector3(room.BottomRightAreaCorner.x, 0, room.BottomRightAreaCorner.y);
+                position.y += halfLength;
+            }
+            
             var door = Instantiate(doorPrefab, position, Quaternion.identity);
             door.AddComponent<BoxCollider>();
             door.tag = Tag.NextLevelDoor;
             door.transform.parent = _sceneryParent.transform;
+            door.transform.Rotate(rotation);
             
             // Add sphere collider as trigger for interaction with player
             var triggerCollider = door.AddComponent<SphereCollider>();
