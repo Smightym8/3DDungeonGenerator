@@ -49,8 +49,6 @@ namespace Dungeon
 
         public static DungeonCreator dungeonCreator;
 
-        private List<Vector3> _tempList = new List<Vector3>();
-        
         // Unity Methods
         private void Awake()
         {
@@ -246,23 +244,37 @@ namespace Dungeon
             // Check which wall doesn't have a corridor so the door can be placed properly
             foreach (var corridor in corridors)
             {
+                // If one side becomes true, do not check it again with other corridors
                 // Bottom horizontal
-                bottomHorizontalHasCorridor = HasCorridorBetween(room.BottomLeftAreaCorner, room.BottomRightAreaCorner,
-                    corridor.TopLeftAreaCorner, corridor.TopRightAreaCorner, true);
+                if (!bottomHorizontalHasCorridor)
+                {
+                    bottomHorizontalHasCorridor = HasCorridorBetween(room.BottomLeftAreaCorner, room.BottomRightAreaCorner,
+                        corridor.TopLeftAreaCorner, corridor.TopRightAreaCorner, true);
+                }
 
-                // Top horizontal
-                topHorizontalHasCorridor = HasCorridorBetween(room.TopLeftAreaCorner, room.TopRightAreaCorner,
-                    corridor.BottomLeftAreaCorner, corridor.BottomRightAreaCorner, true);
+                if (!topHorizontalHasCorridor)
+                {
+                    // Top horizontal
+                    topHorizontalHasCorridor = HasCorridorBetween(room.TopLeftAreaCorner, room.TopRightAreaCorner,
+                        corridor.BottomLeftAreaCorner, corridor.BottomRightAreaCorner, true);    
+                }
 
-                // Left vertical
-                leftVerticalHasCorridor = HasCorridorBetween(room.BottomLeftAreaCorner, room.TopLeftAreaCorner,
-                    corridor.BottomRightAreaCorner, corridor.TopRightAreaCorner, false);
-                
-                // Right vertical
-                rightVerticalHasCorridor = HasCorridorBetween(room.BottomRightAreaCorner, room.TopRightAreaCorner,
-                    corridor.BottomLeftAreaCorner, corridor.TopLeftAreaCorner, false);
+                if (!leftVerticalHasCorridor)
+                {
+                    // Left vertical
+                    leftVerticalHasCorridor = HasCorridorBetween(room.BottomLeftAreaCorner, room.TopLeftAreaCorner,
+                        corridor.BottomRightAreaCorner, corridor.TopRightAreaCorner, false);    
+                }
+
+                if (!rightVerticalHasCorridor)
+                {
+                    // Right vertical
+                    rightVerticalHasCorridor = HasCorridorBetween(room.BottomRightAreaCorner, room.TopRightAreaCorner,
+                        corridor.BottomLeftAreaCorner, corridor.TopLeftAreaCorner, false);    
+                }
             }
 
+            // Place door at wall without corridor
             if (!bottomHorizontalHasCorridor)
             {
                 var halfLength = Math.Abs(room.BottomRightAreaCorner.x - room.BottomLeftAreaCorner.x) / 2;
@@ -528,7 +540,11 @@ namespace Dungeon
             lightSource.range = lightRange;
             lightSource.color = lightColor;
             lightSource.renderMode = LightRenderMode.ForcePixel;
+            
+            // Getting build error without #if UNITY_EDITOR
+            #if UNITY_EDITOR
             lightSource.lightmapBakeType = LightmapBakeType.Baked;
+            #endif
         }
 
         /// <summary>
@@ -1020,6 +1036,7 @@ namespace Dungeon
             CreateDungeon();
         }
         
+        /*
         // For developing purpose to see if the points are on the correct position
         private void OnDrawGizmos()
         {
@@ -1032,5 +1049,6 @@ namespace Dungeon
                 Gizmos.DrawSphere(point, 0.1f);
             }
         }
+        */
     }    
 }
