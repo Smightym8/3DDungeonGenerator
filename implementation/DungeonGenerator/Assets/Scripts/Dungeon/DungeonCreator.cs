@@ -22,8 +22,6 @@ namespace Dungeon
         public int lightRange;
         public Material floorMaterial;
         public Material roofMaterial;
-        public Material startRoomMaterial;
-        public Material endRoomMaterial;
         public Material wallMaterial;
         public Color lightColor = Color.yellow;
 
@@ -86,6 +84,12 @@ namespace Dungeon
             );
             
             var corridors = listOfRoomsAndCorridors.Where(x => x.IsCorridor).ToList();
+            var rooms = listOfRoomsAndCorridors.Where(x => !x.IsCorridor).ToList();
+            
+            _possibleLightPositions = new List<Vector3Int>();
+            _lightPositions = new Dictionary<Vector3Int, int>();
+            _ignoreLightPositions = new List<Vector3Int>();
+            _sceneryPositions = new List<Vector3>();
             
             // Parent objects for floor, roof, walls and scenery
             var currentTransform = transform;
@@ -129,49 +133,27 @@ namespace Dungeon
                 }
             };
 
-            _possibleLightPositions = new List<Vector3Int>();
-            _lightPositions = new Dictionary<Vector3Int, int>();
-            _ignoreLightPositions = new List<Vector3Int>();
-            _sceneryPositions = new List<Vector3>();
-
-            RoomNode startRoom = (RoomNode) listOfRoomsAndCorridors[0];
+            // Choose first generated room as start room
+            RoomNode startRoom = (RoomNode) rooms[0];
             Node endRoomNode = null;
             float maxDistance = 0f;
             
             foreach (var (room, index) in listOfRoomsAndCorridors.Select((room, index) => ( room, index )))
             {
-                // Create floor
-                // Choose first generated room as start room
-                if (index == 0)
-                {
-                    _dungeonFloors.Add(
-                        CreateFloorMesh(
-                            room.BottomLeftAreaCorner,
-                            room.TopRightAreaCorner,
-                            startRoomMaterial,
-                            0,
-                            true,
-                            index
-                        )
-                    );
-                }
-                else
-                {
-                    _dungeonFloors.Add(
-                        CreateFloorMesh(
-                            room.BottomLeftAreaCorner,
-                            room.TopRightAreaCorner,
-                            floorMaterial,
-                            0,
-                            true,
-                            index
-                        )
-                    );
-                }
+                _dungeonFloors.Add(
+                    CreateFloorMesh(
+                        room.BottomLeftAreaCorner,
+                        room.TopRightAreaCorner,
+                        floorMaterial,
+                        0,
+                        true,
+                        index
+                    )
+                );
         
                 // Check distance between start room and each other room
                 // to find the room which is the most distant from the start room
-                if (index > 0 && index < listOfRoomsAndCorridors.Count / 2)
+                if (index > 0 && index < rooms.Count)
                 {
                     RoomNode currentRoom = (RoomNode)listOfRoomsAndCorridors[index];
                     float dist = Vector3.Distance(startRoom.CentrePoint, currentRoom.CentrePoint);
@@ -217,18 +199,16 @@ namespace Dungeon
             }
             
             // Place table with key to get to next level
-            var randomRoomIndex = Random.Range(1, listOfRoomsAndCorridors.Count / 2);
-            PlaceTableWithKey((RoomNode) listOfRoomsAndCorridors[randomRoomIndex]);
+            var randomRoomIndex = Random.Range(1, rooms.Count);
+            PlaceTableWithKey((RoomNode) rooms[randomRoomIndex]);
             
-            /*
             // Add random scenery to room
-            for (var i = 1; i < listOfRooms.Count / 2 - 1; i++)
+            for (var i = 1; i < rooms.Count; i++)
             {
-                PlaceScenery(listOfRooms[i]);
+                PlaceScenery((RoomNode) rooms[i]);
             }
-            */
             
-            SpawnPlayer(playerPrefab, (RoomNode) listOfRoomsAndCorridors[0]);
+            SpawnPlayer(playerPrefab, (RoomNode) rooms[0]);
         }
 
         private void PlaceNextLevelDoor(Node room, List<Node> corridors)
@@ -318,6 +298,8 @@ namespace Dungeon
             var keyTable = Instantiate(tableWithKeyPrefab, position, Quaternion.identity);
             keyTable.tag = Tag.KeyTable;
             keyTable.transform.parent = _sceneryParent.transform;
+            
+            _sceneryPositions.Add(keyTable.transform.position);
         }
 
         private void CombineMeshes(GameObject parent, bool isFloorOrRoof)
@@ -477,22 +459,26 @@ namespace Dungeon
         /// These method places scenery in a room
         /// </summary>
         /// <param name="room">Contains the room where the scenery will be placed</param>
-        private void PlaceScenery(Node room)
+        private void PlaceScenery(RoomNode room)
         {
-            foreach (var prefab in sceneryPrefabs)
+            int randomSceneryIndex = Random.Range(0, sceneryPrefabs.Count);
+            var position = _sceneryPositions[0];
+            
+            while (_sceneryPositions.Contains(position))
             {
-                int randomSceneryIndex = Random.Range(0, sceneryPrefabs.Count);
                 int randomX = Random.Range(room.BottomLeftAreaCorner.x + 1, room.BottomRightAreaCorner.x - 1);
                 int randomZ = Random.Range(room.BottomLeftAreaCorner.y + 1, room.TopLeftAreaCorner.y - 1);
-                var position = new Vector3(randomX, 0, randomZ);
-
-                if (!_sceneryPositions.Contains(position))
-                {
-                    var instantiatedScenery = Instantiate(sceneryPrefabs[randomSceneryIndex], position, Quaternion.identity);
-                    instantiatedScenery.transform.parent = _sceneryParent.transform;
-                    _sceneryPositions.Add(position);
-                }
+                position = new Vector3(randomX, 0, randomZ);
             }
+            
+            var instantiatedScenery = Instantiate(sceneryPrefabs[randomSceneryIndex], position, Quaternion.identity);
+            instantiatedScenery.transform.parent = _sceneryParent.transform;
+            
+            _sceneryPositions.Add(position);
+            
+            instantiatedScenery.AddComponent<BoxCollider>();
+            var direction = (room.CentrePoint - transform.position).normalized;
+            instantiatedScenery.transform.rotation = Quaternion.LookRotation(direction);
         }
 
         /// <summary>

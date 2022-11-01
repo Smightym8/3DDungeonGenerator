@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 400000}
   m_Layer: 0
   m_Name: FelineGargoyle
-  m_TagString: Untagged
+  m_TagString: Statue
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 4294967295
