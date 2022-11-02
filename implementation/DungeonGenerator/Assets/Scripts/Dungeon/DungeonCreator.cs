@@ -165,7 +165,9 @@ namespace Dungeon
                 }
             }
             
-            PlaceNextLevelDoor(endRoomNode, corridors);
+            // Easy mode
+            PlaceNextLevelDoor(rooms[1], corridors); 
+            //PlaceNextLevelDoor(endRoomNode, corridors);
             
             // Create the roof
             foreach (var (room, index) in listOfRoomsAndCorridors.Select((room, index) => ( room, index )))
@@ -182,12 +184,13 @@ namespace Dungeon
                 );
             }
             
+            // TODO: Reduce amount of lamps in hallways
             foreach (var room in listOfRoomsAndCorridors)
             {
                 CreateWalls(room, corridors);
                 CollectLightPositions(room);
             }
-            
+
             CombineMeshes(_floorParent, true);
             CombineMeshes(_roofParent, true);
             CombineMeshes(_wallParent, false);
@@ -198,9 +201,11 @@ namespace Dungeon
                 PlaceLight(position, rotation);
             }
             
+            // Easy mode
+            PlaceTableWithKey((RoomNode) rooms[1]);
             // Place table with key to get to next level
-            var randomRoomIndex = Random.Range(1, rooms.Count);
-            PlaceTableWithKey((RoomNode) rooms[randomRoomIndex]);
+            //var randomRoomIndex = Random.Range(1, rooms.Count);
+            //PlaceTableWithKey((RoomNode) rooms[randomRoomIndex]);
             
             // Add random scenery to room
             for (var i = 1; i < rooms.Count; i++)
@@ -359,11 +364,15 @@ namespace Dungeon
             for (var x = (int)bottomLeftCorner.x; x <= (int)bottomRightCorner.x; x++)
             {
                 var position = new Vector3(x, 0, bottomLeftCorner.z);
-                
                 if (x == (int)bottomLeftCorner.x + (distancePerLight * steps))
                 {
                     steps++;
                     isGettingLight = true;
+                }
+
+                if (room.IsCorridor && room.IsHorizontalCorridor)
+                {
+                    isGettingLight = false;
                 }
                 
                 SaveLightPosition(position, horizontalBottomRotation, isGettingLight);
@@ -378,11 +387,15 @@ namespace Dungeon
             for (var x = (int)topLeftCorner.x; x <= (int)topRightCorner.x; x++)
             {
                 var position = new Vector3(x, 0, topLeftCorner.z);
-
                 if (x == (int)topLeftCorner.x + (distancePerLight * steps))
                 {
                     steps++;
                     isGettingLight = true;
+                }
+                
+                if (room.IsCorridor && room.IsHorizontalCorridor)
+                {
+                    isGettingLight = false;
                 }
                 
                 SaveLightPosition(position, horizontalTopRotation, isGettingLight);
@@ -403,6 +416,11 @@ namespace Dungeon
                     isGettingLight = true;
                 }
                 
+                if (room.IsCorridor && !room.IsHorizontalCorridor)
+                {
+                    isGettingLight = false;
+                }
+                
                 SaveLightPosition(position, verticalLeftRotation, isGettingLight);
                 isGettingLight = false;
             }
@@ -420,6 +438,12 @@ namespace Dungeon
                     steps++;
                     isGettingLight = true;
                 }
+                
+                if (room.IsCorridor && !room.IsHorizontalCorridor)
+                {
+                    isGettingLight = false;
+                }
+                
                 SaveLightPosition(position, verticalRightRotation, isGettingLight);
                 isGettingLight = false;
             }
@@ -526,11 +550,6 @@ namespace Dungeon
             lightSource.range = lightRange;
             lightSource.color = lightColor;
             lightSource.renderMode = LightRenderMode.ForcePixel;
-            
-            // Getting build error without #if UNITY_EDITOR
-            #if UNITY_EDITOR
-            lightSource.lightmapBakeType = LightmapBakeType.Baked;
-            #endif
         }
 
         /// <summary>
