@@ -1,6 +1,3 @@
-int length = isHorizontal ? endCorner.x - startCorner.x :
-                            endCorner.y - startCorner.y;
-...
 if (!isFlip)
 {
     for (int y = 0; y < dungeonHeight; y++)

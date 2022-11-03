@@ -17,11 +17,15 @@ int steps = 1;
 for (var x = (int)bottomLeftCorner.x; x <= (int)bottomRightCorner.x; x++)
 {
     var position = new Vector3(x, 0, bottomLeftCorner.z);
-
     if (x == (int)bottomLeftCorner.x + (distancePerLight * steps))
     {
         steps++;
         isGettingLight = true;
+    }
+
+    if (room.IsCorridor && room.IsHorizontalCorridor)
+    {
+        isGettingLight = false;
     }
 
     SaveLightPosition(position, horizontalBottomRotation, isGettingLight);

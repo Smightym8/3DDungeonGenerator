@@ -11,6 +11,7 @@ namespace Dungeon
 {
     public class DungeonCreator : MonoBehaviour
     {
+        public bool easyMode;
         public int dungeonWidth, dungeonLength;
         public int roomWidthMin, roomLengthMin;
         public int roomWidthMax, roomLengthMax;
@@ -164,11 +165,11 @@ namespace Dungeon
                     endRoomNode = currentRoom;
                 }
             }
-            
+
+            // Added easy mode to use it for presenting the project
             // Easy mode
-            PlaceNextLevelDoor(rooms[1], corridors); 
-            //PlaceNextLevelDoor(endRoomNode, corridors);
-            
+            PlaceNextLevelDoor(easyMode ? rooms[1] : endRoomNode, corridors);
+
             // Create the roof
             foreach (var (room, index) in listOfRoomsAndCorridors.Select((room, index) => ( room, index )))
             {
@@ -184,7 +185,6 @@ namespace Dungeon
                 );
             }
             
-            // TODO: Reduce amount of lamps in hallways
             foreach (var room in listOfRoomsAndCorridors)
             {
                 CreateWalls(room, corridors);
@@ -200,13 +200,19 @@ namespace Dungeon
             {
                 PlaceLight(position, rotation);
             }
-            
-            // Easy mode
-            PlaceTableWithKey((RoomNode) rooms[1]);
-            // Place table with key to get to next level
-            //var randomRoomIndex = Random.Range(1, rooms.Count);
-            //PlaceTableWithKey((RoomNode) rooms[randomRoomIndex]);
-            
+
+            if (easyMode)
+            {
+                // Easy mode
+                PlaceTableWithKey((RoomNode) rooms[1]);    
+            }
+            else
+            {
+                // Place table with key to get to next level
+                var randomRoomIndex = Random.Range(1, rooms.Count);
+                PlaceTableWithKey((RoomNode) rooms[randomRoomIndex]);    
+            }
+
             // Add random scenery to room
             for (var i = 1; i < rooms.Count; i++)
             {
