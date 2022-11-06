@@ -92,7 +92,7 @@ The Cellular automata algorithm uses a grid of cells to build a dungeon. Each ce
 
 \subsection{Delaunay Triangulation}
 \label{subsection:delaunay-triangulation}
-The last algorithm is the delaunay triangulation algorithm for dungeon generation. This algorithm also uses cells but in this case a random rectangle is created inside of each cell. After this step the algorithm separates the room and prevents them from overlapping. All cells that are exceeding a threshold become rooms. To connect all rooms a graph for all the room centre points is constructed. Additionally to the delaunay triangulation algorithm it is necessary to generate a minimum spanning tree of the originally create graph to remove cycles. In figure \ref{fig:delaunay_example} you can see how a dungeon generated with the delaunay triangulation looks like. Compared to the other two algorithms it is more similar to the result of the binary space partition generated dungeon because both use rooms. (\cite[][]{williams_investigation_nodate})
+The last algorithm is the delaunay triangulation algorithm for dungeon generation. This algorithm also uses cells but in this case a random rectangle is created inside of each cell. After this step the algorithm separates the room and prevents them from overlapping. All cells that are exceeding a threshold become rooms. To connect all rooms a graph for all the room centre points is constructed. Additionally to the delaunay triangulation algorithm it is necessary to generate a minimum spanning tree of the originally create graph to remove cycles. In figure \ref{fig:delaunay_example} you can see how a dungeon generated with the delaunay triangulation looks like. Compared to the other two algorithms it is more similar to the result of the binary space partition generated dungeon because both generate square rooms. (\cite[][]{williams_investigation_nodate})
 
 \begin{figure}[ht]
 	\centering
@@ -147,9 +147,10 @@ After collecting all the nodes, we have to find all the lowest leafs because tho
 \\
 \\
 To finally create a mesh for each room we have to loop through all the room nodes. The same nodes can also be used for the roof because it is the same with a different height. As you can see the creation of the triangles is also different. As each room is a rectangle with four corners we can draw two triangles to get a rectangle mesh.
-
-To create the corridors each node is connected with its neighbour node. The corridors nodes are handled like room nodes and therefore also stored in the same list that we use to iterate over. The mesh creation is also the same.
-
+\\
+\\
+To create the corridors each node is connected with its neighbour node. The corridor nodes are handled like room nodes and therefore also stored in the same list that we use to iterate over. The mesh creation is also the same.
+\\
 \begin{listing}[ht]
     \inputminted[fontsize=\footnotesize,linenos]{csharp}{code/CreateFloorRoof.cs}
     \caption[Creation of floor and roof]{Creation of floor and roof}
@@ -169,6 +170,7 @@ To find the start room it is not much work necessary. I only check the index whi
 \end{figure}
 
 For the end room I thought about which rooms could be end rooms and I think the best case is when the end room is not too near to the start room. For this I calculate the distance between each room and the start room. The room that is the furthest away will be the end room.
+\\
 \begin{listing}[ht]
     \inputminted[fontsize=\footnotesize,linenos]{csharp}{code/EndRoom.cs}
     \caption[Determining end room]{Determining end room}
@@ -196,7 +198,7 @@ There is also a special case for creating the walls when the corridor is not pla
 
 \begin{figure}[htb]
 	\centering
-	\includegraphics[scale=0.5]{images/detecting_corridors2.drawio.png}    
+	\includegraphics[scale=0.49]{images/detecting_corridors2.drawio.png}    
 	\caption{Detecting corridors at room corners}
 	\label{fig:detecting-corridors-at-room-corners}
 \end{figure}
@@ -206,7 +208,7 @@ Before creating the mesh it is necessary to get the positions of the vertices. T
 \\
 Creating the mesh is very simple. The only difference compared to a plane in this case is, that I have to check if it is a horizontal or vertical wall for the calculation of the length. It is also important to flip the creation of the vertices. 
 All walls have to be visible from the inside of the rooms and therefore the triangles can not be created the same way for all walls. Some walls need the triangles to be drawn clock wise and some counter clockwise.
-
+\\
 \begin{listing}[ht]
     \inputminted[fontsize=\footnotesize,linenos]{csharp}{code/CreateWalls3.cs}
     \caption[Creating wall mesh]{Creating wall mesh}
@@ -216,14 +218,16 @@ All walls have to be visible from the inside of the rooms and therefore the tria
 \newpage
 \subsection{Lighting}
 \label{subsection:lighting}
-To get the positions for the lights the length of the wall is calculated and divided by the frequency of the lights. With the help of steps it will be decided if that position is used for the lights. For corridors the wall positions are ignored because with this approach it would always place the maximum amount of lights per wall. To prevent that the open space of the corridor is used to place lights, only that sides of it are used for collection the positions.
 \begin{figure}[htb]
 	\centering
-	\includegraphics[scale=0.5]{images/lights.png}   
+	\includegraphics[scale=0.45]{images/lights.png}   
 	\caption{Lights in the dungeon}
 	\label{fig:lights}
 \end{figure}
-As positions can occur multiple times because of overlapping between walls, It is checked if a point is already in the list for the possible positions. If that is the case the position will be removed and added to another list to ignore that positions in the future. To keep track over all points I used two lists, one for the possible positions and one list for the actual positions. For the actual positions it depends if isGettingLight is true. Additionally to the position the rotation is added so the light prefabs are all facing inside the room. To store this data I used a Dictionary. 
+To get the positions for the lights the length of the wall is calculated and divided by the frequency of the lights. With the help of steps it will be decided if that position is used for the lights. For corridors the wall positions are ignored because with this approach it would always place the maximum amount of lights per wall. To prevent that the open space of the corridor is used to place lights, only that sides of it are used for collection the positions.
+\\
+\\
+As positions can occur multiple times because of overlapping between walls, It is checked if a point is already in the list for the possible positions. If that is the case the position will be removed and added to another list to ignore that positions in the future. To keep track over all points I used two lists, one for the possible positions and one list for the actual positions. For the actual positions it depends if isGettingLight is true. Additionally to the position the rotation is added so the light prefabs are all facing inside the room. 
 \begin{listing}[ht]
     \inputminted[fontsize=\footnotesize,linenos]{csharp}{code/Lights2.cs}
     \caption[Saving light positions]{Saving light positions}
