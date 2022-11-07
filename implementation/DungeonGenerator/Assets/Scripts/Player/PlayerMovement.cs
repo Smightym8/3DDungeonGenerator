@@ -22,11 +22,12 @@ namespace Player
     
         private bool _isMoving;
         private bool _isRunning;
-        
         private bool _isInKeyRange;
         private bool _isInDoorRange;
         private bool _isActionKeyPressed;
         private bool _isKeyInInventory;
+        private bool _isQuit;
+        private bool _isInstructionsReset;
 
         private static readonly int IsWalking = Animator.StringToHash("isWalking");
         private static readonly int IsRunning = Animator.StringToHash("isRunning");
@@ -42,6 +43,10 @@ namespace Player
         {
             // Get key in start method because Awake method is called before the key exists
             _key = GameObject.FindGameObjectWithTag(Tag.Key);
+            
+            _uiManager.ToggleTextWindow(true);
+            _uiManager.SetText("There are a door and a key somewhere in the dungeon.\n" +
+                               "Find the key to open the door to enter the next level.");
         }
 
         private void Update()
@@ -86,12 +91,24 @@ namespace Player
             {
                 _isActionKeyPressed = false;
             }
+
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                _isQuit = true;
+            }
         }
 
         private void FixedUpdate()
         {
             if (_isMoving)
             {
+                if (!_isInstructionsReset)
+                {
+                    _isInstructionsReset = true;
+                    _uiManager.ToggleTextWindow(false);
+                    _uiManager.SetText("");
+                }
+                
                 var targetAngle = Mathf.Atan2(_moveDirection.x, _moveDirection.z) * Mathf.Rad2Deg + thirdPersonCamera.eulerAngles.y;
                 var angle = Mathf.SmoothDampAngle(
                     transform.eulerAngles.y, 
@@ -129,6 +146,11 @@ namespace Player
                 // Reload Dungeon
                 DungeonCreator.dungeonCreator.ResetDungeon();
                 ResetPlayerState();
+            }
+
+            if (_isQuit)
+            {
+                Application.Quit();
             }
         }
 
